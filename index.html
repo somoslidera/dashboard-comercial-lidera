@@ -636,11 +636,22 @@ function desenharMapa(containerId, clientes) {
 
   // Rótulos em "chamadas laterais": jogados para as colunas vazias dos lados,
   // ligados ao ponto por uma linha-guia. Evita empilhamento sobre outros estados.
-  const DIVISOR = 500;          // pontos a leste vão para a direita; o resto, à esquerda
   const LX_ESQ = -50, LX_DIR = 810; // coluna de texto de cada lado (dentro das laterais)
   const lineH = 30, topo = 6, base = 792;
-  const esquerda = pts.filter(p => p.x <= DIVISOR).sort((a, b) => a.y - b.y);
-  const direita  = pts.filter(p => p.x >  DIVISOR).sort((a, b) => a.y - b.y);
+
+  // Divide leste/oeste pelo ponto médio da faixa de longitude dos clientes...
+  const xs = pts.map(p => p.x);
+  const DIVISOR = (Math.min(...xs) + Math.max(...xs)) / 2;
+  const esquerda = pts.filter(p => p.x <= DIVISOR);
+  const direita  = pts.filter(p => p.x >  DIVISOR);
+  // ...e reequilibra: move o ponto mais ao sul do lado mais cheio para o lado vazio,
+  // até ficarem parelhos (assim o aglomerado do Sul não fica todo espremido de um lado só).
+  const moverMaisAoSul = (de, para) => { de.sort((a, b) => a.y - b.y); para.push(de.pop()); };
+  let guarda = 0;
+  while (esquerda.length - direita.length >= 2 && guarda++ < 30) moverMaisAoSul(esquerda, direita);
+  while (direita.length - esquerda.length >= 2 && guarda++ < 30) moverMaisAoSul(direita, esquerda);
+  esquerda.sort((a, b) => a.y - b.y);
+  direita.sort((a, b) => a.y - b.y);
 
   const distribuir = (lista) => {
     // 1ª passada: cada rótulo perto do y do seu ponto, sem colar no anterior
