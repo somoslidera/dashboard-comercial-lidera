@@ -135,6 +135,7 @@
   .btn-mapa:hover{background:rgba(203,167,94,.22);border-color:var(--gold)}
   .chart-mapa.full{position:fixed;inset:0;z-index:1000;border-radius:0;padding:clamp(16px,2.4vh,30px) clamp(20px,2.4vw,44px);background:radial-gradient(90vw 65vh at 50% -18%, #16294a 0%, var(--bg-1) 45%, var(--bg-0) 100%)}
   .chart-mapa.full .btn-mapa{display:none}
+  .chart-mapa.full #resumoClientes{display:none}
   .btn-voltar{display:none;position:absolute;top:clamp(16px,2.2vh,28px);right:clamp(20px,2.2vw,40px);z-index:2;align-items:center;gap:.5em;background:rgba(203,167,94,.14);border:1px solid var(--gold);color:var(--gold-soft);font-family:'Figtree',sans-serif;font-size:clamp(12px,1.6vh,16px);font-weight:700;letter-spacing:.03em;padding:.55em 1.2em;border-radius:100px;cursor:pointer;transition:background .2s}
   .btn-voltar:hover{background:rgba(203,167,94,.28)}
   .chart-mapa.full .btn-voltar{display:inline-flex}
@@ -266,7 +267,8 @@ const AGENDAMENTO_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSC
 const CLIENTES_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSC_sn5l8O1_9iubrdvUuEcXu4Bxag9XXpzalRcx86TyVjUxMgIJkjiSQVnINNql2D4WOewYtEgOicm/pub?gid=1432086558&single=true&output=csv";
 const METAS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSC_sn5l8O1_9iubrdvUuEcXu4Bxag9XXpzalRcx86TyVjUxMgIJkjiSQVnINNql2D4WOewYtEgOicm/pub?gid=1263996932&single=true&output=csv";
 const META_MENSAL_PADRAO = 100000;
-const INTERVALO_ATUALIZACAO_MIN = 5;
+const INTERVALO_ATUALIZACAO_MIN = 5;   // KPIs, meta e vendas
+const INTERVALO_CLIENTES_MIN = 1;      // mapa de clientes (mais frequente)
 
 const MESES = ["janeiro","fevereiro","março","abril","maio","junho",
                "julho","agosto","setembro","outubro","novembro","dezembro"];
@@ -875,7 +877,7 @@ async function carregarDados() {
         // detecta nova venda (total de vendas do ano subiu) → toca a buzina
         const totalVendasAgora = dados.series.vendas.reduce((s, v) => s + (v || 0), 0);
         if (totalVendasAnterior !== null && totalVendasAgora > totalVendasAnterior) {
-          tocarBuzina();
+          tocarSino();
           piscarVenda();
         }
         totalVendasAnterior = totalVendasAgora;
@@ -900,6 +902,11 @@ async function carregarDados() {
     avisoDemo = 'Modo demonstração — configure as URLs da planilha no arquivo';
   }
 
+  mostrarAviso(avisoDemo);
+}
+
+// Atualização só do mapa de clientes (roda em intervalo próprio, mais curto)
+async function atualizarMapa() {
   if (CLIENTES_CSV_URL) {
     try {
       desenharMapa('chartMapa', interpretarClientes(await buscarCSV(CLIENTES_CSV_URL)));
@@ -910,8 +917,6 @@ async function carregarDados() {
   } else {
     desenharMapa('chartMapa', CLIENTES_DEMO);
   }
-
-  mostrarAviso(avisoDemo);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -933,29 +938,32 @@ function liberarSom() {
 // navegadores só permitem áudio após um gesto do usuário: qualquer clique/tecla libera
 ['click', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, liberarSom));
 
-function tocarBuzina() {
+function tocarSino() {
   if (!somLiberado || !audioCtx) return;
   const t = audioCtx.currentTime;
-  // "honk" = duas ondas dente-de-serra + reforço grave, com envelope rápido
-  const honk = (ini, dur) => {
-    const g = audioCtx.createGain();
-    g.connect(audioCtx.destination);
-    g.gain.setValueAtTime(0.0001, ini);
-    g.gain.exponentialRampToValueAtTime(0.4, ini + 0.03);
-    g.gain.setValueAtTime(0.4, ini + dur - 0.07);
-    g.gain.exponentialRampToValueAtTime(0.0001, ini + dur);
-    [400, 500, 250].forEach((f, i) => {
+  // "ding" = parciais inarmônicos (timbre de sino) com ataque rápido e cauda longa
+  const ding = (ini, f0, vol) => {
+    const parciais = [
+      { r: 1,    g: 1.00, d: 1.9 },
+      { r: 2.00, g: 0.55, d: 1.2 },
+      { r: 2.76, g: 0.45, d: 0.9 },
+      { r: 5.40, g: 0.20, d: 0.5 }
+    ];
+    parciais.forEach(p => {
       const o = audioCtx.createOscillator();
-      o.type = 'sawtooth';
-      o.frequency.value = f;
-      const og = audioCtx.createGain();
-      og.gain.value = i === 2 ? 0.45 : 1;
-      o.connect(og); og.connect(g);
-      o.start(ini); o.stop(ini + dur);
+      o.type = 'sine';
+      o.frequency.value = f0 * p.r;
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.0001, ini);
+      g.gain.exponentialRampToValueAtTime(vol * p.g, ini + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, ini + p.d);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(ini); o.stop(ini + p.d + 0.05);
     });
   };
-  honk(t, 0.26);          // buzinada curta
-  honk(t + 0.34, 0.5);    // seguida de uma longa
+  // duas batidas ascendentes — como o sino de balcão usado para anunciar vendas
+  ding(t, 784, 0.5);          // Sol5
+  ding(t + 0.17, 1046.5, 0.45); // Dó6
 }
 
 // pisca o KPI de Vendas Fechadas como reforço visual da nova venda
@@ -971,7 +979,7 @@ function piscarVenda() {
 }
 
 // botão do rodapé: libera o som e toca uma buzinada de teste para confirmar
-btnSom.addEventListener('click', () => { liberarSom(); tocarBuzina(); });
+btnSom.addEventListener('click', () => { liberarSom(); tocarSino(); });
 
 /* ═══════════════════════════════════════════════════════════
    MAPA EM TELA CHEIA
@@ -990,7 +998,9 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') mapaCard.cla
 document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) mapaCard.classList.remove('full'); });
 
 carregarDados();
-setInterval(carregarDados, INTERVALO_ATUALIZACAO_MIN * 60 * 1000);
+atualizarMapa();
+setInterval(carregarDados, INTERVALO_ATUALIZACAO_MIN * 60 * 1000);       // KPIs, meta, vendas
+setInterval(atualizarMapa, INTERVALO_CLIENTES_MIN * 60 * 1000);          // só o mapa de clientes
 </script>
 
 </body>
