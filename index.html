@@ -145,6 +145,9 @@
   .demo-badge{display:none;background:rgba(203,167,94,.1);border:1px solid rgba(203,167,94,.3);color:var(--gold-soft);padding:.4em 1em;border-radius:100px;text-transform:none;letter-spacing:.02em}
   .demo-badge.visible{display:inline-block}
 
+  /* ── CONFETE (celebração de nova venda) ── */
+  #confeteCanvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:2000}
+
   @media (prefers-reduced-motion:reduce){
     .card{animation:none;opacity:1;transform:none}
     .progress-fill{transition:none}
@@ -246,6 +249,7 @@
 
 </div>
 
+<canvas id="confeteCanvas"></canvas>
 
 <script>
 /* ═══════════════════════════════════════════════════════════
@@ -261,6 +265,9 @@ const METAS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSC_sn5l8
 const META_MENSAL_PADRAO = 100000;
 const INTERVALO_ATUALIZACAO_MIN = 5;   // KPIs, meta e vendas
 const INTERVALO_CLIENTES_MIN = 1;      // mapa de clientes (mais frequente)
+// Som do sino da nova venda. Cole aqui um data URI ("data:audio/mpeg;base64,...")
+// com o áudio desejado (ex.: o do vídeo). Vazio = usa o sino sintetizado embutido.
+const SOM_SINO_URL = "";
 
 const MESES = ["janeiro","fevereiro","março","abril","maio","junho",
                "julho","agosto","setembro","outubro","novembro","dezembro"];
@@ -869,8 +876,7 @@ async function carregarDados() {
         // detecta nova venda: se a quantidade de vendas do MÊS VIGENTE aumentou → toca o sino
         const vendasMesAgora = dados.series.vendas[new Date().getMonth()] || 0;
         if (vendasMesAnterior !== null && vendasMesAgora > vendasMesAnterior) {
-          tocarSino();
-          piscarVenda();
+          dispararCelebracao();
         }
         vendasMesAnterior = vendasMesAgora;
         renderizar(dados);
@@ -927,8 +933,13 @@ function liberarSom() {
 // navegadores só permitem áudio após um gesto do usuário: qualquer clique/tecla libera
 ['click', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, liberarSom));
 
+// Se houver um áudio próprio configurado, usa ele; senão, o sino sintetizado.
+const sinoAudio = SOM_SINO_URL ? new Audio(SOM_SINO_URL) : null;
+
 function tocarSino() {
-  if (!somLiberado || !audioCtx) return;
+  if (!somLiberado) return;
+  if (sinoAudio) { try { sinoAudio.currentTime = 0; sinoAudio.play(); return; } catch (e) {} }
+  if (!audioCtx) return;
   const t = audioCtx.currentTime;
 
   // Uma batida de sino de balcão: transiente metálico do impacto +
@@ -983,6 +994,79 @@ function piscarVenda() {
      { boxShadow: '0 0 0 0 rgba(79,209,165,0)' }],
     { duration: 900, iterations: 3 }
   );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CONFETE + POP (efeito de "abrir confete" antes do sino)
+   ═══════════════════════════════════════════════════════════ */
+const confeteCanvas = document.getElementById('confeteCanvas');
+const cctx = confeteCanvas.getContext('2d');
+let confetes = [], confeteRAF = null;
+const CORES_CONFETE = ['#CBA75E', '#E6D19A', '#4FD1A5', '#6AA0F5', '#F8F6F1', '#E8836B'];
+function ajustarConfeteCanvas() { confeteCanvas.width = window.innerWidth; confeteCanvas.height = window.innerHeight; }
+window.addEventListener('resize', ajustarConfeteCanvas);
+ajustarConfeteCanvas();
+
+function soltarConfete() {
+  const cx = window.innerWidth / 2, cy = window.innerHeight * 0.52;
+  for (let i = 0; i < 160; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const forca = 6 + Math.random() * 15;
+    confetes.push({
+      x: cx + (Math.random() - 0.5) * 120, y: cy + (Math.random() - 0.5) * 30,
+      vx: Math.cos(ang) * forca, vy: Math.sin(ang) * forca - 6,
+      g: 0.32 + Math.random() * 0.18, s: 6 + Math.random() * 8,
+      cor: CORES_CONFETE[(Math.random() * CORES_CONFETE.length) | 0],
+      rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.5, vida: 1
+    });
+  }
+  if (!confeteRAF) loopConfete();
+}
+function loopConfete() {
+  cctx.clearRect(0, 0, confeteCanvas.width, confeteCanvas.height);
+  confetes.forEach(p => {
+    p.vy += p.g; p.x += p.vx; p.y += p.vy; p.vx *= 0.99; p.rot += p.vr;
+    if (p.y > window.innerHeight * 0.6) p.vida -= 0.018;
+    cctx.save();
+    cctx.globalAlpha = Math.max(0, p.vida);
+    cctx.translate(p.x, p.y); cctx.rotate(p.rot);
+    cctx.fillStyle = p.cor;
+    cctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * 0.55);
+    cctx.restore();
+  });
+  confetes = confetes.filter(p => p.vida > 0 && p.y < confeteCanvas.height + 40);
+  if (confetes.length) { confeteRAF = requestAnimationFrame(loopConfete); }
+  else { cctx.clearRect(0, 0, confeteCanvas.width, confeteCanvas.height); confeteRAF = null; }
+}
+
+// som do "pop" do confete (estalo + estouro tonal curto)
+function tocarPop() {
+  if (!somLiberado || !audioCtx) return;
+  const t = audioCtx.currentTime, sr = audioCtx.sampleRate, dur = 0.13;
+  const buf = audioCtx.createBuffer(1, Math.floor(sr * dur), sr);
+  const ch = buf.getChannelData(0);
+  for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / ch.length, 1.6);
+  const nb = audioCtx.createBufferSource(); nb.buffer = buf;
+  const bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 0.6;
+  const ng = audioCtx.createGain(); ng.gain.value = 0.6;
+  nb.connect(bp); bp.connect(ng); ng.connect(audioCtx.destination);
+  nb.start(t);
+  const o = audioCtx.createOscillator(); o.type = 'triangle';
+  o.frequency.setValueAtTime(950, t); o.frequency.exponentialRampToValueAtTime(160, t + 0.13);
+  const og = audioCtx.createGain();
+  og.gain.setValueAtTime(0.0001, t);
+  og.gain.exponentialRampToValueAtTime(0.5, t + 0.008);
+  og.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+  o.connect(og); og.connect(audioCtx.destination);
+  o.start(t); o.stop(t + 0.22);
+}
+
+// celebração de nova venda: confete + pop primeiro, depois o sino
+function dispararCelebracao() {
+  soltarConfete();
+  tocarPop();
+  piscarVenda();
+  setTimeout(tocarSino, 600);
 }
 
 /* ═══════════════════════════════════════════════════════════
