@@ -148,6 +148,17 @@
   /* ── CONFETE (celebração de nova venda) ── */
   #confeteCanvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:2000}
 
+  /* ── TELA "ATIVAR SOM" (libera o áudio na TV com 1 toque) ── */
+  #somOverlay{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:rgba(6,12,26,.75);backdrop-filter:blur(2px)}
+  #somOverlay.escondido{display:none}
+  .som-card{background:linear-gradient(180deg,var(--surface),var(--bg-1));border:1px solid var(--line-strong);border-radius:20px;padding:clamp(24px,4vh,44px) clamp(28px,4vw,56px);text-align:center;max-width:min(90vw,560px);box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .som-emoji{font-size:clamp(34px,6vh,54px);margin-bottom:8px}
+  .som-titulo{font-family:'Fraunces',serif;font-size:clamp(20px,3vh,30px);font-weight:600;margin-bottom:10px}
+  .som-txt{color:var(--text-2);font-size:clamp(13px,1.7vh,17px);margin-bottom:22px;line-height:1.5}
+  #btnAtivarSom{font-family:'Figtree',sans-serif;font-size:clamp(15px,2vh,20px);font-weight:700;color:#0A1322;background:linear-gradient(180deg,var(--gold-soft),var(--gold));border:none;border-radius:100px;padding:.7em 2.4em;cursor:pointer;transition:transform .15s}
+  #btnAtivarSom:hover{transform:translateY(-1px)}
+  #btnAtivarSom:focus,#btnAtivarSom:focus-visible{outline:3px solid var(--gold-soft);outline-offset:3px}
+
   @media (prefers-reduced-motion:reduce){
     .card{animation:none;opacity:1;transform:none}
     .progress-fill{transition:none}
@@ -250,6 +261,15 @@
 </div>
 
 <canvas id="confeteCanvas"></canvas>
+
+<div id="somOverlay">
+  <div class="som-card">
+    <div class="som-emoji">🔔</div>
+    <div class="som-titulo">Ativar o som do alerta</div>
+    <div class="som-txt">Aperte <b>OK</b> no controle da TV (ou clique no botão) uma vez para liberar o som da nova venda. Isso é exigência do navegador e só precisa ser feito quando a página abre.</div>
+    <button id="btnAtivarSom" type="button" autofocus>🔔 Ativar som</button>
+  </div>
+</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════
@@ -1108,6 +1128,22 @@ function sairMapaFull() {
 document.getElementById('btnMapaVoltar').addEventListener('click', sairMapaFull);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') mapaCard.classList.remove('full'); });
 document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) mapaCard.classList.remove('full'); });
+
+/* ═══════════════════════════════════════════════════════════
+   TELA "ATIVAR SOM" — libera o áudio na TV com 1 toque (OK do controle)
+   ═══════════════════════════════════════════════════════════ */
+const somOverlay = document.getElementById('somOverlay');
+const btnAtivarSom = document.getElementById('btnAtivarSom');
+function ativarSomTV() {
+  liberarSom();
+  // toca o sino uma vez dentro do gesto: confirma o som e "destrava" o áudio na TV
+  if (sinoAudio) { try { sinoAudio.currentTime = 0; sinoAudio.play().catch(() => {}); } catch (e) {} }
+  somOverlay.classList.add('escondido');
+  document.removeEventListener('keydown', ativarSomTV);
+}
+btnAtivarSom.addEventListener('click', ativarSomTV);
+document.addEventListener('keydown', ativarSomTV); // qualquer tecla/OK do controle também libera
+setTimeout(() => { try { btnAtivarSom.focus(); } catch (e) {} }, 120);
 
 carregarDados();
 atualizarMapa();
