@@ -244,7 +244,7 @@
   <footer>
     <span id="ultimaAtualizacao">Aguardando dados…</span>
     <span class="demo-badge" id="demoBadge">Modo demonstração — configure as URLs da planilha no arquivo</span>
-    <span>Atualização automática a cada 5 minutos</span>
+    <span>Atualização automática a cada 1 minuto</span>
   </footer>
 
 </div>
@@ -263,7 +263,7 @@ const AGENDAMENTO_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSC
 const CLIENTES_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSC_sn5l8O1_9iubrdvUuEcXu4Bxag9XXpzalRcx86TyVjUxMgIJkjiSQVnINNql2D4WOewYtEgOicm/pub?gid=1432086558&single=true&output=csv";
 const METAS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSC_sn5l8O1_9iubrdvUuEcXu4Bxag9XXpzalRcx86TyVjUxMgIJkjiSQVnINNql2D4WOewYtEgOicm/pub?gid=1263996932&single=true&output=csv";
 const META_MENSAL_PADRAO = 100000;
-const INTERVALO_ATUALIZACAO_MIN = 5;   // KPIs, meta e vendas
+const INTERVALO_ATUALIZACAO_MIN = 1;   // KPIs, meta e vendas
 const INTERVALO_CLIENTES_MIN = 1;      // mapa de clientes (mais frequente)
 // Som do sino da nova venda. Cole aqui um data URI ("data:audio/mpeg;base64,...")
 // com o áudio desejado (ex.: o do vídeo). Vazio = usa o sino sintetizado embutido.
@@ -611,12 +611,34 @@ function coordenadasCliente(c) {
   return null;
 }
 
+/* ─── Ponto (x,y) está dentro do polígono de um estado? (ray casting) ─── */
+function pontoNoEstado(px, py, d) {
+  // cada estado pode ter vários subpolígonos (ilhas), separados por 'M'
+  const subs = d.split(/[Mm]/);
+  for (const sub of subs) {
+    const nums = sub.match(/-?\d+(?:\.\d+)?/g);
+    if (!nums || nums.length < 6) continue;
+    const n = nums.length >> 1;
+    let dentro = false;
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+      const xi = +nums[2 * i], yi = +nums[2 * i + 1];
+      const xj = +nums[2 * j], yj = +nums[2 * j + 1];
+      if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) dentro = !dentro;
+    }
+    if (dentro) return true;
+  }
+  return false;
+}
+
 /* ─── Desenha o mapa do Brasil com os clientes ─── */
 function desenharMapa(containerId, clientes) {
   let svg = `<svg viewBox="-360 -20 1480 800" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">`;
   svg += `<defs>
     <linearGradient id="gEstado" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#17376C"/><stop offset="100%" stop-color="#0D2247"/>
+      <stop offset="0%" stop-color="#1E4E8C"/><stop offset="100%" stop-color="#0F2A50"/>
+    </linearGradient>
+    <linearGradient id="gEstadoOff" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#101B30"/><stop offset="100%" stop-color="#0A1526"/>
     </linearGradient>
     <radialGradient id="gNevoa" cx="50%" cy="45%" r="55%">
       <stop offset="0%" stop-color="rgba(201,169,97,0.13)"/><stop offset="100%" stop-color="rgba(201,169,97,0)"/>
@@ -624,10 +646,7 @@ function desenharMapa(containerId, clientes) {
   </defs>`;
   svg += `<circle cx="380" cy="360" r="430" fill="url(#gNevoa)"/>`;
 
-  MAPA_BRASIL.forEach(d => {
-    svg += `<path d="${d}" fill="url(#gEstado)" stroke="rgba(201,169,97,0.4)" stroke-width="1.1" stroke-linejoin="round"/>`;
-  });
-
+  // Processa clientes → grupos → pontos projetados (antes de pintar os estados)
   const grupos = {};
   clientes.forEach(c => {
     const coords = coordenadasCliente(c);
@@ -637,7 +656,6 @@ function desenharMapa(containerId, clientes) {
     grupos[chave].qtd++;
   });
 
-  // Monta a lista de pontos com posição projetada e rótulo
   const pts = [];
   let totalClientes = 0, totalCidades = 0;
   Object.values(grupos).forEach(g => {
@@ -646,6 +664,12 @@ function desenharMapa(containerId, clientes) {
     const [x, y] = projetar(g.coords[0], g.coords[1]);
     const rotulo = (g.cidade + (g.uf ? ' · ' + g.uf.toUpperCase() : '') + (g.qtd > 1 ? ' ×' + g.qtd : '')).toUpperCase();
     pts.push({ x, y, rotulo, halfW: rotulo.length * 4.6 + 6 });
+  });
+
+  // Estados: azul só onde há cliente dentro; os demais ficam apagados (recuados)
+  MAPA_BRASIL.forEach(d => {
+    const ativo = pts.some(p => pontoNoEstado(p.x, p.y, d));
+    svg += `<path d="${d}" fill="url(#${ativo ? 'gEstado' : 'gEstadoOff'})" stroke="${ativo ? 'rgba(201,169,97,0.5)' : 'rgba(147,163,196,0.10)'}" stroke-width="${ativo ? 1.2 : 0.8}" stroke-linejoin="round"/>`;
   });
 
   // Desenha os pontos (nas posições geográficas reais)
