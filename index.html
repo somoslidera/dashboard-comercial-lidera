@@ -130,6 +130,20 @@
   @keyframes pulso{0%{r:8;opacity:.8}70%{r:19;opacity:0}100%{r:19;opacity:0}}
   .ponto-pulso{animation:pulso 2.8s ease-out infinite}
 
+  /* ── CONTROLES DO MAPA (tela cheia) ── */
+  .btn-mapa{align-self:flex-end;margin:-2px 0 6px;display:inline-flex;align-items:center;gap:.45em;background:rgba(203,167,94,.1);border:1px solid rgba(203,167,94,.35);color:var(--gold-soft);font-family:'Figtree',sans-serif;font-size:clamp(10px,1.2vh,13px);font-weight:600;letter-spacing:.02em;padding:.45em 1em;border-radius:100px;cursor:pointer;transition:background .2s,border-color .2s}
+  .btn-mapa:hover{background:rgba(203,167,94,.22);border-color:var(--gold)}
+  .chart-mapa.full{position:fixed;inset:0;z-index:1000;border-radius:0;padding:clamp(16px,2.4vh,30px) clamp(20px,2.4vw,44px);background:radial-gradient(90vw 65vh at 50% -18%, #16294a 0%, var(--bg-1) 45%, var(--bg-0) 100%)}
+  .chart-mapa.full .btn-mapa{display:none}
+  .btn-voltar{display:none;position:absolute;top:clamp(16px,2.2vh,28px);right:clamp(20px,2.2vw,40px);z-index:2;align-items:center;gap:.5em;background:rgba(203,167,94,.14);border:1px solid var(--gold);color:var(--gold-soft);font-family:'Figtree',sans-serif;font-size:clamp(12px,1.6vh,16px);font-weight:700;letter-spacing:.03em;padding:.55em 1.2em;border-radius:100px;cursor:pointer;transition:background .2s}
+  .btn-voltar:hover{background:rgba(203,167,94,.28)}
+  .chart-mapa.full .btn-voltar{display:inline-flex}
+
+  /* ── BOTÃO DE SOM ── */
+  .btn-som{display:inline-flex;align-items:center;gap:.4em;background:rgba(203,167,94,.1);border:1px solid rgba(203,167,94,.3);color:var(--gold-soft);font-family:'Figtree',sans-serif;font-size:clamp(9px,1.2vh,12px);font-weight:600;letter-spacing:.04em;text-transform:none;padding:.4em .9em;border-radius:100px;cursor:pointer;transition:background .2s,border-color .2s}
+  .btn-som:hover{background:rgba(203,167,94,.2);border-color:var(--gold)}
+  .btn-som.ativo{color:var(--teal);border-color:rgba(79,209,165,.4);background:rgba(79,209,165,.1)}
+
   /* ── FOOTER ── */
   footer{flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;font-size:clamp(9px,1.2vh,12px);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);border-top:1px solid var(--line);padding-top:clamp(8px,1.2vh,14px)}
   .demo-badge{display:none;background:rgba(203,167,94,.1);border:1px solid rgba(203,167,94,.3);color:var(--gold-soft);padding:.4em 1em;border-radius:100px;text-transform:none;letter-spacing:.02em}
@@ -216,9 +230,11 @@
   </section>
 
   <section class="charts-row">
-    <div class="card chart-card chart-mapa">
+    <div class="card chart-card chart-mapa" id="mapaCard">
       <h2>Nossos Clientes pelo Brasil <small id="resumoClientes"></small></h2>
+      <button class="btn-mapa" id="btnMapaFull" type="button" aria-label="Ver mapa em tela cheia">⛶ Ver em tela cheia</button>
       <div class="chart-wrap" id="chartMapa"></div>
+      <button class="btn-voltar" id="btnMapaVoltar" type="button">✕ Voltar ao painel</button>
     </div>
     <div class="card chart-card">
       <h2>Vendas por Mês <small id="resumoVendas"></small></h2>
@@ -229,7 +245,10 @@
   <footer>
     <span id="ultimaAtualizacao">Aguardando dados…</span>
     <span class="demo-badge" id="demoBadge">Modo demonstração — configure as URLs da planilha no arquivo</span>
-    <span>Atualização automática a cada 5 minutos</span>
+    <span style="display:flex;align-items:center;gap:1vw">
+      <button class="btn-som" id="btnSom" type="button">🔔 Ativar alerta de venda</button>
+      <span>Atualização automática a cada 5 minutos</span>
+    </span>
   </footer>
 
 </div>
@@ -363,6 +382,7 @@ const CLIENTES_DEMO = [
 let ultimoDados = null;
 let dadosReais = false;    // true quando a planilha já carregou com sucesso ao menos uma vez
 let dadosMapaReais = false; // idem para a aba de clientes (mapa)
+let totalVendasAnterior = null; // total de vendas do ano na última leitura (p/ detectar nova venda)
 let mesSelecionado = null; // null = automático (mês atual ou último com dados)
 
 /* ─── Utilidades ─── */
@@ -852,6 +872,13 @@ async function carregarDados() {
       ]);
       const dados = montarDados(tv, ta, tm);
       if (dados) {
+        // detecta nova venda (total de vendas do ano subiu) → toca a buzina
+        const totalVendasAgora = dados.series.vendas.reduce((s, v) => s + (v || 0), 0);
+        if (totalVendasAnterior !== null && totalVendasAgora > totalVendasAnterior) {
+          tocarBuzina();
+          piscarVenda();
+        }
+        totalVendasAnterior = totalVendasAgora;
         renderizar(dados);
         dadosReais = true;
       } else if (!dadosReais) {
@@ -886,6 +913,81 @@ async function carregarDados() {
 
   mostrarAviso(avisoDemo);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   ALERTA SONORO DE NOVA VENDA (buzina) — Web Audio, sem arquivos
+   ═══════════════════════════════════════════════════════════ */
+let audioCtx = null, somLiberado = false;
+const btnSom = document.getElementById('btnSom');
+
+function liberarSom() {
+  if (somLiberado) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    somLiberado = true;
+    btnSom.classList.add('ativo');
+    btnSom.textContent = '🔔 Alerta de venda ativo';
+  } catch (e) { /* navegador sem Web Audio */ }
+}
+// navegadores só permitem áudio após um gesto do usuário: qualquer clique/tecla libera
+['click', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, liberarSom));
+
+function tocarBuzina() {
+  if (!somLiberado || !audioCtx) return;
+  const t = audioCtx.currentTime;
+  // "honk" = duas ondas dente-de-serra + reforço grave, com envelope rápido
+  const honk = (ini, dur) => {
+    const g = audioCtx.createGain();
+    g.connect(audioCtx.destination);
+    g.gain.setValueAtTime(0.0001, ini);
+    g.gain.exponentialRampToValueAtTime(0.4, ini + 0.03);
+    g.gain.setValueAtTime(0.4, ini + dur - 0.07);
+    g.gain.exponentialRampToValueAtTime(0.0001, ini + dur);
+    [400, 500, 250].forEach((f, i) => {
+      const o = audioCtx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = f;
+      const og = audioCtx.createGain();
+      og.gain.value = i === 2 ? 0.45 : 1;
+      o.connect(og); og.connect(g);
+      o.start(ini); o.stop(ini + dur);
+    });
+  };
+  honk(t, 0.26);          // buzinada curta
+  honk(t + 0.34, 0.5);    // seguida de uma longa
+}
+
+// pisca o KPI de Vendas Fechadas como reforço visual da nova venda
+function piscarVenda() {
+  const card = document.getElementById('kpiVendas')?.closest('.kpi');
+  if (!card) return;
+  card.animate(
+    [{ boxShadow: '0 0 0 0 rgba(79,209,165,0)' },
+     { boxShadow: '0 0 0 4px rgba(79,209,165,.55)' },
+     { boxShadow: '0 0 0 0 rgba(79,209,165,0)' }],
+    { duration: 900, iterations: 3 }
+  );
+}
+
+// botão do rodapé: libera o som e toca uma buzinada de teste para confirmar
+btnSom.addEventListener('click', () => { liberarSom(); tocarBuzina(); });
+
+/* ═══════════════════════════════════════════════════════════
+   MAPA EM TELA CHEIA
+   ═══════════════════════════════════════════════════════════ */
+const mapaCard = document.getElementById('mapaCard');
+document.getElementById('btnMapaFull').addEventListener('click', () => {
+  mapaCard.classList.add('full');
+  try { if (mapaCard.requestFullscreen) mapaCard.requestFullscreen(); } catch (e) {}
+});
+function sairMapaFull() {
+  mapaCard.classList.remove('full');
+  try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
+}
+document.getElementById('btnMapaVoltar').addEventListener('click', sairMapaFull);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') mapaCard.classList.remove('full'); });
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) mapaCard.classList.remove('full'); });
 
 carregarDados();
 setInterval(carregarDados, INTERVALO_ATUALIZACAO_MIN * 60 * 1000);
