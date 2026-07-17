@@ -71,8 +71,8 @@ export default async function handler(req, res) {
       }
     } else if (evento === 'deal.created') {
       const mes = mesBR(deal.created_at);
-      if (deal.funnel_id === F_PREVENDAS) {                     // NOVO LEAD (distinto por lead_id)
-        if (deal.lead_id) await redis(['SADD', `l:${mes}`, deal.lead_id]);
+      if (deal.funnel_id === F_PREVENDAS) {                     // NOVO LEAD (conta cada deal do Pré Vendas 1x)
+        if (await primeiraVez(mes, `lead:${deal.id}`)) await redis(['INCR', `l:${mes}`]);
       } else if (deal.funnel_id === F_RASTREIO_AGENDAMENTO) {   // OPORTUNIDADE (agendamento)
         if (await primeiraVez(mes, `oport:${deal.id}`)) await redis(['INCR', `o:${mes}`]);
       } else if (deal.funnel_id === F_RASTREIO_NOSHOW) {        // NO-SHOW

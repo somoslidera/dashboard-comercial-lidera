@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     cmds.push(['GET', `r:${mes}`]);
     cmds.push(['GET', `o:${mes}`]);
     cmds.push(['GET', `n:${mes}`]);
-    cmds.push(['SCARD', `l:${mes}`]);
+    cmds.push(['GET', `l:${mes}`]);
   }
   const r = await pipeline(cmds);
 
