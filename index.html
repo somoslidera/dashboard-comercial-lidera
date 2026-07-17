@@ -779,51 +779,52 @@ function desenharMapa(containerId, clientes) {
 const fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 function moeda(v) { return fmtBRL.format(Math.round(v || 0)); }
 
-/* ─── Gráfico de barras — vendas por mês (SVG) ─── */
+/* ─── Gráfico de barras — vendas por mês (só os meses com venda) ─── */
 function desenharBarras(containerId, valores, destaque) {
   const el = document.getElementById(containerId);
-  // mede o tamanho REAL do container → viewBox 1:1, sem distorção das barras
+  // mede o tamanho REAL do container → viewBox 1:1, sem distorção
   const W = Math.max(320, el.clientWidth || 600);
   const H = Math.max(220, el.clientHeight || 400);
-  const padL = W * 0.02, padR = W * 0.02, padT = H * 0.17, padB = H * 0.13;
-  const n = valores.length;
-  const slot = (W - padL - padR) / n;
-  const barW = Math.min(slot * 0.5, 42);
-  const rx = barW / 2;
-  const max = Math.max(1, ...valores.filter(v => v != null));
+  const padL = W * 0.05, padR = W * 0.05, padT = H * 0.20, padB = H * 0.13;
+  const areaW = W - padL - padR;
   const alturaMax = H - padT - padB;
   const baseY = H - padB;
+
+  // só os meses que têm venda
+  const meses = [];
+  valores.forEach((v, i) => { if (v != null) meses.push({ i, v }); });
 
   let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
   svg += `<defs>
     <linearGradient id="gBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EBD7A4"/><stop offset="100%" stop-color="#B78F42"/></linearGradient>
-    <linearGradient id="gBarDim" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#37456A"/><stop offset="100%" stop-color="#232F49"/></linearGradient>
+    <linearGradient id="gBarMuted" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8B7B54"/><stop offset="100%" stop-color="#544A2C"/></linearGradient>
   </defs>`;
 
-  // linhas de grade sutis + base
+  // grade sutil + base
   for (let g = 1; g <= 3; g++) { const gy = baseY - alturaMax * g / 4; svg += `<line x1="${padL}" y1="${gy}" x2="${W - padR}" y2="${gy}" stroke="rgba(157,176,206,0.07)" stroke-width="1"/>`; }
   svg += `<line x1="${padL}" y1="${baseY}" x2="${W - padR}" y2="${baseY}" stroke="rgba(157,176,206,0.16)" stroke-width="1"/>`;
 
-  const fMes = Math.max(11, Math.min(W * 0.024, 15));
-  const fVal = Math.max(16, Math.min(W * 0.05, 30));
+  if (!meses.length) { svg += `</svg>`; el.innerHTML = svg; return; }
 
-  valores.forEach((v, i) => {
-    const cx = padL + slot * i + slot / 2;
+  const N = meses.length;
+  const slotW = Math.min(areaW / N, 180);       // limita o espaçamento quando há poucos meses
+  const grupoW = slotW * N;
+  const startX = padL + (areaW - grupoW) / 2;    // centraliza o conjunto
+  const barW = Math.min(slotW * 0.44, 58);
+  const rx = barW / 2;
+  const max = Math.max(1, ...meses.map(m => m.v));
+  const fMes = Math.max(12, Math.min(W * 0.027, 17));
+  const fVal = Math.max(18, Math.min(W * 0.058, 36));
+
+  meses.forEach((m, j) => {
+    const cx = startX + slotW * j + slotW / 2;
     const x = cx - barW / 2;
-    const ativo = destaque == null || destaque === i;
-    const temValor = v != null;
-
-    // trilho de fundo em TODOS os meses → dá estrutura (meses vazios não ficam "buracos")
-    svg += `<rect x="${x}" y="${padT}" width="${barW}" height="${alturaMax}" rx="${rx}" fill="rgba(157,176,206,0.055)"/>`;
-
-    if (temValor) {
-      const h = Math.max(barW * 0.7, (v / max) * alturaMax);
-      const y = baseY - h;
-      svg += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="${rx}" fill="url(#${ativo ? 'gBar' : 'gBarDim'})"/>`;
-      svg += `<text x="${cx}" y="${y - fVal * 0.45}" text-anchor="middle" fill="${ativo ? '#F8F6F1' : '#8FA0BF'}" font-size="${fVal}" font-weight="600" font-family="Fraunces, serif">${v}</text>`;
-    }
-
-    svg += `<text x="${cx}" y="${baseY + fMes * 1.9}" text-anchor="middle" fill="${ativo && temValor ? '#E6D19A' : '#66799A'}" font-size="${fMes}" font-weight="${ativo && temValor ? 800 : 600}" letter-spacing="1.5" font-family="Figtree, sans-serif">${MESES_ABREV[i].toUpperCase()}</text>`;
+    const ativo = destaque == null || destaque === m.i;
+    const h = Math.max(barW * 0.85, (m.v / max) * alturaMax);
+    const y = baseY - h;
+    svg += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="${rx}" fill="url(#${ativo ? 'gBar' : 'gBarMuted'})"/>`;
+    svg += `<text x="${cx}" y="${y - fVal * 0.45}" text-anchor="middle" fill="${ativo ? '#F8F6F1' : '#D8CBA8'}" font-size="${fVal}" font-weight="600" font-family="Fraunces, serif">${m.v}</text>`;
+    svg += `<text x="${cx}" y="${baseY + fMes * 1.9}" text-anchor="middle" fill="${ativo ? '#E6D19A' : '#9A8E6E'}" font-size="${fMes}" font-weight="${ativo ? 800 : 600}" letter-spacing="1.5" font-family="Figtree, sans-serif">${MESES_ABREV[m.i].toUpperCase()}</text>`;
   });
 
   svg += `</svg>`;
