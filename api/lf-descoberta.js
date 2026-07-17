@@ -1,46 +1,26 @@
-// Leitor de descoberta v3 — busca deals POR lead e testa paginação de leads.
+// Utilitário de administração (temporário): lista funis do LeadForge e reseta os contadores.
 export default async function handler(req, res) {
-  const KEY = process.env.LEADFORGE_API_KEY;
   const TOKEN = process.env.LF_DEBUG_TOKEN;
-  if (!KEY) return res.status(500).json({ erro: 'Falta LEADFORGE_API_KEY.' });
-  if (!TOKEN || req.query.token !== TOKEN) return res.status(401).json({ erro: 'Passe ?token=SEU_TOKEN.' });
+  if (!TOKEN || req.query.token !== TOKEN) return res.status(401).json({ erro: 'Passe ?token=SEU_TOKEN' });
 
-  const BASE = 'https://api.leadforge.com.br/api/v1';
-  const H = { 'X-API-Key': KEY, 'Accept': 'application/json' };
-  const call = async (path) => {
-    try { const r = await fetch(BASE + path, { headers: H }); const t = await r.text();
-      let j; try { j = JSON.parse(t); } catch { j = t.slice(0,300); } return { status: r.status, json: j };
-    } catch (e) { return { status: 'erro', json: String(e) }; }
-  };
-
-  const out = { base: BASE };
-
-  // paginação de leads
-  const l1 = await call('/leads/search?phone=55');
-  const l200 = await call('/leads/search?phone=55&limit=200');
-  const lp2 = await call('/leads/search?phone=55&page=2');
-  out.leads = {
-    padrao_total: l1.json && l1.json.total, padrao_n: (l1.json && l1.json.leads || []).length,
-    limit200_total: l200.json && l200.json.total, limit200_n: (l200.json && l200.json.leads || []).length,
-    page2_total: lp2.json && lp2.json.total, page2_n: (lp2.json && lp2.json.leads || []).length,
-    campos: (l1.json && l1.json.leads && l1.json.leads[0]) ? Object.keys(l1.json.leads[0]) : null
-  };
-
-  // procura um deal em algum dos leads retornados
-  const leadsArr = (l200.json && l200.json.leads) || (l1.json && l1.json.leads) || [];
-  const tentativas = [];
-  let dealAmostra = null, dealDe = null;
-  for (const l of leadsArr.slice(0, 25)) {
-    const dr = await call(`/deals/search?lead_id=${l.id}`);
-    const arr = (dr.json && dr.json.deals) || [];
-    tentativas.push({ lead: l.full_name, status: dr.status, total: dr.json && dr.json.total, n: arr.length });
-    if (arr.length && !dealAmostra) { dealAmostra = arr[0]; dealDe = l.full_name; }
+  // ?reset=1  → apaga os contadores do ano (limpeza dos testes)
+  if (req.query.reset === '1') {
+    const R_URL = process.env.KV_REST_API_URL, R_TOKEN = process.env.KV_REST_API_TOKEN;
+    const ano = new Date().getFullYear();
+    const dels = [];
+    for (let m = 1; m <= 12; m++) {
+      const mes = `${ano}-${String(m).padStart(2, '0')}`;
+      dels.push(`v:count:${mes}`, `v:valor:${mes}`, `r:${mes}`, `o:${mes}`, `n:${mes}`, `l:${mes}`, `proc:${mes}`);
+    }
+    const r = await fetch(R_URL, { method: 'POST', headers: { Authorization: `Bearer ${R_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(['DEL', ...dels]) });
+    const j = await r.json();
+    return res.status(200).json({ reset: true, chaves_apagadas: j.result });
   }
-  out.deal_tentativas = tentativas;
-  out.deal_encontrado_em = dealDe;
-  out.deal_campos = dealAmostra ? Object.keys(dealAmostra) : null;
-  out.deal_amostra = dealAmostra;
 
-  res.setHeader('Cache-Control', 'no-store');
-  return res.status(200).json(out);
+  // padrão → lista os funis (id + nome) pra eu confirmar o mapeamento
+  const KEY = process.env.LEADFORGE_API_KEY;
+  const r = await fetch('https://api.leadforge.com.br/api/v1/funnels', { headers: { 'X-API-Key': KEY, Accept: 'application/json' } });
+  const j = await r.json();
+  const funis = (j.funnels || []).map(f => ({ id: f.id, name: f.name }));
+  return res.status(200).json({ funis });
 }
