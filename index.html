@@ -83,13 +83,14 @@
   .kpi-row .card:nth-child(2){animation-delay:.10s}
   .kpi-row .card:nth-child(3){animation-delay:.16s}
   .kpi-row .card:nth-child(4){animation-delay:.22s}
+  .kpi-row .card:nth-child(5){animation-delay:.28s}
   .meta-strip{animation-delay:.30s}
   .charts-row .card:nth-child(1){animation-delay:.40s}
   .charts-row .card:nth-child(2){animation-delay:.47s}
   .charts-row .card:nth-child(3){animation-delay:.54s}
 
   /* ── KPIs ── */
-  .kpi-row{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap)}
+  .kpi-row{flex:0 0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap)}
   .kpi{display:flex;align-items:center;gap:clamp(10px,1vw,18px);padding:clamp(12px,2vh,22px) clamp(14px,1.4vw,24px)}
   .kpi-icon{flex:0 0 auto;width:clamp(38px,5vh,58px);height:clamp(38px,5vh,58px);border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(203,167,94,.1);border:1px solid rgba(203,167,94,.28)}
   .kpi-icon svg{width:52%;height:52%;stroke:var(--gold-soft);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -183,6 +184,15 @@
   </header>
 
   <section class="kpi-row">
+    <div class="card kpi">
+      <div class="kpi-icon">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.3 19c0-3 2.5-5 5.7-5s5.7 2 5.7 5"/><path d="M16.5 5.4a3 3 0 0 1 0 5.6M17.5 14.2c2.4.5 4 2.3 4 4.8"/></svg>
+      </div>
+      <div class="kpi-text">
+        <div class="label">Leads no Mês</div>
+        <div class="value" id="kpiLeads">0</div>
+      </div>
+    </div>
     <div class="card kpi">
       <div class="kpi-icon">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.9" fill="#0A1322"/></svg>
@@ -861,6 +871,7 @@ function renderizar(dados) {
   document.getElementById('metaStatus').classList.toggle('visible', bateu);
 
   // ── KPIs ──
+  animarContagem(document.getElementById('kpiLeads'), d.leads ?? 0);
   animarContagem(document.getElementById('kpiOportunidades'), d.oportunidades);
   animarContagem(document.getElementById('kpiReunioes'), d.reunioes);
   animarContagem(document.getElementById('kpiVendas'), d.vendas);
@@ -907,43 +918,31 @@ function mostrarAviso(texto) {
 
 async function carregarDados() {
   let avisoDemo = '';
-
-  if (VENDAS_CSV_URL || AGENDAMENTO_CSV_URL) {
-    try {
-      const [tv, ta, tm] = await Promise.all([
-        VENDAS_CSV_URL ? buscarCSV(VENDAS_CSV_URL) : Promise.resolve(null),
-        AGENDAMENTO_CSV_URL ? buscarCSV(AGENDAMENTO_CSV_URL) : Promise.resolve(null),
-        METAS_CSV_URL ? buscarCSV(METAS_CSV_URL).catch(() => null) : Promise.resolve(null)
-      ]);
-      const dados = montarDados(tv, ta, tm);
-      if (dados) {
-        // detecta nova venda: se a quantidade de vendas do MÊS VIGENTE aumentou → toca o sino
-        const vendasMesAgora = dados.series.vendas[new Date().getMonth()] || 0;
-        if (vendasMesAnterior !== null && vendasMesAgora > vendasMesAnterior) {
-          dispararCelebracao();
-        }
-        vendasMesAnterior = vendasMesAgora;
-        renderizar(dados);
-        dadosReais = true;
-      } else if (!dadosReais) {
-        // planilha respondeu mas sem dados reconhecíveis — mostra exemplo em vez de zeros
-        renderizar(DADOS_DEMO);
-        avisoDemo = 'Não encontrei as tabelas na planilha — exibindo dados de exemplo';
+  try {
+    // fonte automática: dados vindos do LeadForge (via webhooks) somados no Redis
+    const resp = await fetch('/api/dados?t=' + Date.now(), { cache: 'no-store' });
+    const dados = await resp.json();
+    if (dados && dados.porMes && Object.keys(dados.porMes).length) {
+      // detecta nova venda no MÊS VIGENTE → celebração (confete + sino)
+      const vendasMesAgora = dados.series.vendas[new Date().getMonth()] || 0;
+      if (vendasMesAnterior !== null && vendasMesAgora > vendasMesAnterior) {
+        dispararCelebracao();
       }
-    } catch (e) {
-      // fetch bloqueado (arquivo aberto direto/file://) ou sem internet
-      if (!dadosReais) {
-        renderizar(DADOS_DEMO);
-        avisoDemo = 'Sem conexão com a planilha — exibindo exemplo. Publique o dashboard num servidor (não abra o arquivo por duplo-clique).';
-      } else {
-        document.getElementById('ultimaAtualizacao').textContent = 'Falha ao atualizar — tentando novamente…';
-      }
+      vendasMesAnterior = vendasMesAgora;
+      renderizar(dados);
+      dadosReais = true;
+    } else if (!dadosReais) {
+      renderizar(DADOS_DEMO);
+      avisoDemo = 'Aguardando eventos do LeadForge — exibindo exemplo';
     }
-  } else {
-    renderizar(DADOS_DEMO);
-    avisoDemo = 'Modo demonstração — configure as URLs da planilha no arquivo';
+  } catch (e) {
+    if (!dadosReais) {
+      renderizar(DADOS_DEMO);
+      avisoDemo = 'Sem conexão com os dados — tentando novamente…';
+    } else {
+      document.getElementById('ultimaAtualizacao').textContent = 'Falha ao atualizar — tentando novamente…';
+    }
   }
-
   mostrarAviso(avisoDemo);
 }
 
