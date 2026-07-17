@@ -54,6 +54,15 @@
   .title{font-size:clamp(12px,1.7vh,17px);color:var(--text-2);font-weight:500;letter-spacing:.02em}
   .title b{color:var(--text);font-weight:700}
 
+  .header-controls{display:flex;align-items:center;gap:clamp(8px,1vw,16px)}
+  .btn-olho{display:inline-flex;align-items:center;justify-content:center;width:clamp(36px,4.6vh,46px);height:clamp(36px,4.6vh,46px);flex:0 0 auto;background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;color:var(--text-2);cursor:pointer;transition:border-color .2s,color .2s}
+  .btn-olho:hover{border-color:var(--gold);color:var(--gold-soft)}
+  .btn-olho svg{width:54%;height:54%;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .btn-olho .olho-fechado{display:none}
+  body.ocultar-valores .btn-olho{color:var(--gold-soft);border-color:var(--gold)}
+  body.ocultar-valores .btn-olho .olho-aberto{display:none}
+  body.ocultar-valores .btn-olho .olho-fechado{display:inline}
+
   .mes-filtro-wrap{position:relative}
   .mes-filtro{
     appearance:none;-webkit-appearance:none;
@@ -90,7 +99,7 @@
   .charts-row .card:nth-child(3){animation-delay:.54s}
 
   /* ── KPIs ── */
-  .kpi-row{flex:0 0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap)}
+  .kpi-row{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap)}
   .kpi{display:flex;align-items:center;gap:clamp(10px,1vw,18px);padding:clamp(12px,2vh,22px) clamp(14px,1.4vw,24px)}
   .kpi-icon{flex:0 0 auto;width:clamp(38px,5vh,58px);height:clamp(38px,5vh,58px);border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(203,167,94,.1);border:1px solid rgba(203,167,94,.28)}
   .kpi-icon svg{width:52%;height:52%;stroke:var(--gold-soft);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -178,8 +187,14 @@
       <div class="brand">Lidera <span>Soluções</span></div>
     </div>
     <div class="title">Performance Comercial <b>2026</b></div>
-    <div class="mes-filtro-wrap">
-      <select class="mes-filtro" id="mesFiltro" aria-label="Filtrar mês"></select>
+    <div class="header-controls">
+      <button class="btn-olho" id="btnOlho" type="button" aria-label="Ocultar ou mostrar valores" title="Ocultar/mostrar valores">
+        <svg class="olho-aberto" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg class="olho-fechado" viewBox="0 0 24 24"><path d="M9.9 5.2A9.5 9.5 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.3 3.9M6.3 6.3A17 17 0 0 0 2 12s3.6 7 10 7a9.5 9.5 0 0 0 3.3-.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18"/></svg>
+      </button>
+      <div class="mes-filtro-wrap">
+        <select class="mes-filtro" id="mesFiltro" aria-label="Filtrar mês"></select>
+      </div>
     </div>
   </header>
 
@@ -200,6 +215,7 @@
       <div class="kpi-text">
         <div class="label">Oportunidades</div>
         <div class="value" id="kpiOportunidades">0</div>
+        <div class="sub" id="subOport"></div>
       </div>
     </div>
     <div class="card kpi">
@@ -220,15 +236,6 @@
         <div class="label">Vendas Fechadas</div>
         <div class="value" id="kpiVendas">0</div>
         <div class="sub" id="subConversao"></div>
-      </div>
-    </div>
-    <div class="card kpi accent">
-      <div class="kpi-icon">
-        <svg viewBox="0 0 24 24"><path d="M12 2.5v19M8 6.5h6.2a2.8 2.8 0 0 1 0 5.6H9.5a2.8 2.8 0 0 0 0 5.6H16"/></svg>
-      </div>
-      <div class="kpi-text">
-        <div class="label">Faturamento</div>
-        <div class="value money" id="kpiFaturamento">R$ 0</div>
       </div>
     </div>
   </section>
@@ -415,6 +422,7 @@ let dadosReais = false;    // true quando a planilha já carregou com sucesso ao
 let dadosMapaReais = false; // idem para a aba de clientes (mapa)
 let vendasMesAnterior = null; // qtd de vendas do mês vigente na última leitura (p/ detectar nova venda)
 let mesSelecionado = null; // null = automático (mês atual ou último com dados)
+let valoresOcultos = localStorage.getItem('ocultarValores') === '1'; // esconder R$ (modo privacidade)
 
 /* ─── Utilidades ─── */
 function parseNumeroBR(str) {
@@ -772,46 +780,53 @@ function moeda(v) { return fmtBRL.format(Math.round(v || 0)); }
 
 /* ─── Gráfico de barras — vendas por mês (SVG) ─── */
 function desenharBarras(containerId, valores, destaque) {
-  const W = 1000, H = 560;
-  const padL = 16, padR = 16, padT = 60, padB = 54;
+  const el = document.getElementById(containerId);
+  // mede o tamanho REAL do container → viewBox 1:1, sem distorção das barras
+  const W = Math.max(320, el.clientWidth || 600);
+  const H = Math.max(220, el.clientHeight || 400);
+  const padL = W * 0.02, padR = W * 0.02, padT = H * 0.17, padB = H * 0.13;
   const n = valores.length;
-  const areaW = W - padL - padR;
-  const larguraSlot = areaW / n;
-  const larguraBarra = larguraSlot * 0.46;
-  const max = Math.max(1, ...valores.filter(v => v !== null));
+  const slot = (W - padL - padR) / n;
+  const barW = Math.min(slot * 0.5, 42);
+  const rx = barW / 2;
+  const max = Math.max(1, ...valores.filter(v => v != null));
   const alturaMax = H - padT - padB;
+  const baseY = H - padB;
 
-  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">`;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
   svg += `<defs>
-    <linearGradient id="gBar" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#E6D19A"/><stop offset="100%" stop-color="#B78F42"/>
-    </linearGradient>
-    <linearGradient id="gBarApagada" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="rgba(230,209,154,0.20)"/><stop offset="100%" stop-color="rgba(183,143,66,0.20)"/>
-    </linearGradient>
+    <linearGradient id="gBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EBD7A4"/><stop offset="100%" stop-color="#B78F42"/></linearGradient>
+    <linearGradient id="gBarDim" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#37456A"/><stop offset="100%" stop-color="#232F49"/></linearGradient>
   </defs>`;
 
-  // linhas de grade horizontais sutis
-  for (let g = 1; g <= 3; g++) {
-    const gy = H - padB - (alturaMax * g / 4);
-    svg += `<line x1="${padL}" y1="${gy}" x2="${W - padR}" y2="${gy}" stroke="rgba(157,176,206,0.08)" stroke-width="1"/>`;
-  }
-  svg += `<line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="rgba(157,176,206,0.20)" stroke-width="1"/>`;
+  // linhas de grade sutis + base
+  for (let g = 1; g <= 3; g++) { const gy = baseY - alturaMax * g / 4; svg += `<line x1="${padL}" y1="${gy}" x2="${W - padR}" y2="${gy}" stroke="rgba(157,176,206,0.07)" stroke-width="1"/>`; }
+  svg += `<line x1="${padL}" y1="${baseY}" x2="${W - padR}" y2="${baseY}" stroke="rgba(157,176,206,0.16)" stroke-width="1"/>`;
+
+  const fMes = Math.max(11, Math.min(W * 0.024, 15));
+  const fVal = Math.max(16, Math.min(W * 0.05, 30));
 
   valores.forEach((v, i) => {
-    const cx = padL + larguraSlot * i + larguraSlot / 2;
-    const ativo = destaque === undefined || destaque === null || destaque === i;
-    svg += `<text x="${cx}" y="${H - padB + 38}" text-anchor="middle" fill="${ativo ? '#E6D19A' : '#66799A'}" font-size="22" font-weight="${ativo ? 800 : 600}" letter-spacing="2" font-family="Figtree, sans-serif">${MESES_ABREV[i].toUpperCase()}</text>`;
-    if (v === null || v === undefined) return;
-    const h = Math.max(5, (v / max) * alturaMax);
-    const x = cx - larguraBarra / 2;
-    const y = H - padB - h;
-    svg += `<rect x="${x}" y="${y}" width="${larguraBarra}" height="${h}" rx="8" fill="url(#${ativo ? 'gBar' : 'gBarApagada'})"/>`;
-    svg += `<text x="${cx}" y="${y - 16}" text-anchor="middle" fill="${ativo ? '#EAF0FA' : '#66799A'}" font-size="34" font-weight="600" font-family="Fraunces, serif">${v}</text>`;
+    const cx = padL + slot * i + slot / 2;
+    const x = cx - barW / 2;
+    const ativo = destaque == null || destaque === i;
+    const temValor = v != null;
+
+    // trilho de fundo em TODOS os meses → dá estrutura (meses vazios não ficam "buracos")
+    svg += `<rect x="${x}" y="${padT}" width="${barW}" height="${alturaMax}" rx="${rx}" fill="rgba(157,176,206,0.055)"/>`;
+
+    if (temValor) {
+      const h = Math.max(barW * 0.7, (v / max) * alturaMax);
+      const y = baseY - h;
+      svg += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="${rx}" fill="url(#${ativo ? 'gBar' : 'gBarDim'})"/>`;
+      svg += `<text x="${cx}" y="${y - fVal * 0.45}" text-anchor="middle" fill="${ativo ? '#F8F6F1' : '#8FA0BF'}" font-size="${fVal}" font-weight="600" font-family="Fraunces, serif">${v}</text>`;
+    }
+
+    svg += `<text x="${cx}" y="${baseY + fMes * 1.9}" text-anchor="middle" fill="${ativo && temValor ? '#E6D19A' : '#66799A'}" font-size="${fMes}" font-weight="${ativo && temValor ? 800 : 600}" letter-spacing="1.5" font-family="Figtree, sans-serif">${MESES_ABREV[i].toUpperCase()}</text>`;
   });
 
   svg += `</svg>`;
-  document.getElementById(containerId).innerHTML = svg;
+  el.innerHTML = svg;
 }
 
 /* ─── Animação de contagem ─── */
@@ -851,6 +866,15 @@ document.getElementById('mesFiltro').addEventListener('change', e => {
   if (ultimoDados) renderizar(ultimoDados);
 });
 
+/* ─── Botão do olho: esconder/mostrar os valores em R$ ─── */
+document.body.classList.toggle('ocultar-valores', valoresOcultos);
+document.getElementById('btnOlho').addEventListener('click', () => {
+  valoresOcultos = !valoresOcultos;
+  localStorage.setItem('ocultarValores', valoresOcultos ? '1' : '0');
+  document.body.classList.toggle('ocultar-valores', valoresOcultos);
+  if (ultimoDados) renderizar(ultimoDados);
+});
+
 /* ─── Renderização ─── */
 function renderizar(dados) {
   ultimoDados = dados;
@@ -864,7 +888,9 @@ function renderizar(dados) {
   const pct = d.meta > 0 ? Math.min((d.valorVendas / d.meta) * 100, 100) : 0;
   document.getElementById('progressFill').style.width = pct + '%';
   document.getElementById('metaPct').textContent = Math.round(pct) + '%';
-  document.getElementById('metaValor').innerHTML = `${moeda(d.valorVendas)} <small>/ ${moeda(d.meta)}</small>`;
+  document.getElementById('metaValor').innerHTML = valoresOcultos
+    ? `R$ •••••• <small>/ R$ ••••••</small>`
+    : `${moeda(d.valorVendas)} <small>/ ${moeda(d.meta)}</small>`;
 
   const bateu = d.meta > 0 && d.valorVendas >= d.meta;
   document.getElementById('progressTrack').classList.toggle('complete', bateu);
@@ -875,7 +901,14 @@ function renderizar(dados) {
   animarContagem(document.getElementById('kpiOportunidades'), d.oportunidades);
   animarContagem(document.getElementById('kpiReunioes'), d.reunioes);
   animarContagem(document.getElementById('kpiVendas'), d.vendas);
-  document.getElementById('kpiFaturamento').textContent = moeda(d.valorVendas);
+
+  // % de leads que viraram oportunidade (reunião agendada) — só quando os dados são consistentes
+  const subOport = document.getElementById('subOport');
+  if (d.leads > 0 && d.oportunidades <= d.leads) {
+    subOport.textContent = Math.round((d.oportunidades / d.leads) * 100) + '% dos leads';
+  } else {
+    subOport.textContent = '';
+  }
 
   const subNoShow = document.getElementById('subNoShow');
   if (d.noShowPct !== null && d.noShowPct !== undefined) {
@@ -898,7 +931,7 @@ function renderizar(dados) {
   const totalVendasAno = dados.series.vendas.reduce((s, v) => s + (v || 0), 0);
   const totalFatAno = Object.values(dados.porMes).reduce((s, m) => s + (m.valorVendas || 0), 0);
   document.getElementById('resumoVendas').textContent =
-    totalVendasAno > 0 ? totalVendasAno + ' no ano · ' + moeda(totalFatAno) : '';
+    totalVendasAno > 0 ? totalVendasAno + ' no ano · ' + (valoresOcultos ? 'R$ ••••••' : moeda(totalFatAno)) : '';
 
   const agora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   document.getElementById('ultimaAtualizacao').textContent = 'Última atualização: ' + agora;
