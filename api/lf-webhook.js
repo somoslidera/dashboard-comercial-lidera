@@ -10,6 +10,9 @@ const F_PREVENDAS            = 'e72026a9-756b-4db0-ad9f-2aacc2a5a113'; // Pré V
 const F_RASTREIO_AGENDAMENTO = 'eba4042d-db40-436b-8efb-3c5d6602d756'; // [SISTEMA] Rastreio - Agendamentos  (CONFIRMAR)
 const F_RASTREIO_NOSHOW      = 'a8bda2e1-e970-41bc-ab62-3158ead4ffc2'; // [SISTEMA] Rastreio - No-Show        (CONFIRMAR)
 
+// Instância "API Oficial - Lidera" (nº 51 997708817) = leads-lixo do posto de saúde → NÃO contam
+const INSTANCIA_POSTO = '8f8cb4b9-25fd-4f5d-93a1-e7dcf03fa338';
+
 async function redis(cmd) {
   const r = await fetch(R_URL, {
     method: 'POST',
@@ -56,6 +59,7 @@ export default async function handler(req, res) {
   const body = await lerCorpo(req);
   const evento = body.event;
   const deal = (body.data && body.data.deal) || {};
+  const lead = (body.data && body.data.lead) || {};
 
   try {
     if (evento === 'deal.won') {
@@ -72,7 +76,10 @@ export default async function handler(req, res) {
     } else if (evento === 'deal.created') {
       const mes = mesBR(deal.created_at);
       if (deal.funnel_id === F_PREVENDAS) {                     // NOVO LEAD (conta cada deal do Pré Vendas 1x)
-        if (await primeiraVez(mes, `lead:${deal.id}`)) await redis(['INCR', `l:${mes}`]);
+        // ignora leads-lixo do posto de saúde (vêm pela instância "API Oficial")
+        if (lead.instance_id !== INSTANCIA_POSTO && await primeiraVez(mes, `lead:${deal.id}`)) {
+          await redis(['INCR', `l:${mes}`]);
+        }
       } else if (deal.funnel_id === F_RASTREIO_AGENDAMENTO) {   // OPORTUNIDADE (agendamento)
         if (await primeiraVez(mes, `oport:${deal.id}`)) await redis(['INCR', `o:${mes}`]);
       } else if (deal.funnel_id === F_RASTREIO_NOSHOW) {        // NO-SHOW
