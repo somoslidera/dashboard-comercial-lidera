@@ -10,6 +10,10 @@ const F_PREVENDAS            = 'e72026a9-756b-4db0-ad9f-2aacc2a5a113'; // Pré V
 const F_RASTREIO_AGENDAMENTO = 'eba4042d-db40-436b-8efb-3c5d6602d756'; // [SISTEMA] Rastreio - Agendamentos  (CONFIRMAR)
 const F_RASTREIO_NOSHOW      = 'a8bda2e1-e970-41bc-ab62-3158ead4ffc2'; // [SISTEMA] Rastreio - No-Show        (CONFIRMAR)
 
+// Etapas de encerramento do Pré Vendas que contam como DESQUALIFICAÇÃO (saem do MQL)
+const S_DESQUALIFICADO = '0ca30456-0b96-4452-a014-3a71db256270'; // LEAD DESQUALIFICADO (status "abandoned")
+const S_PERDA_SDR      = '7184bfe4-539f-4f9c-b3a4-b59f6a277ee8'; // PERDA SDR          (status "lost")
+
 // Instância "API Oficial - Lidera" (nº 51 997708817) = leads-lixo do posto de saúde → NÃO contam
 const INSTANCIA_POSTO = '8f8cb4b9-25fd-4f5d-93a1-e7dcf03fa338';
 
@@ -84,6 +88,14 @@ export default async function handler(req, res) {
         if (await primeiraVez(mes, `oport:${deal.id}`)) await redis(['INCR', `o:${mes}`]);
       } else if (deal.funnel_id === F_RASTREIO_NOSHOW) {        // NO-SHOW
         if (await primeiraVez(mes, `noshow:${deal.id}`)) await redis(['INCR', `n:${mes}`]);
+      }
+    } else if (evento === 'deal.closed') {
+      // DESQUALIFICAÇÃO no Pré Vendas → tira do MQL (MQL = leads − desqualificados).
+      // deal.closed dispara em qualquer encerramento e traz a etapa; só contam LEAD DESQUALIFICADO e PERDA SDR.
+      if (deal.funnel_id === F_PREVENDAS &&
+          (deal.funnel_stage_id === S_DESQUALIFICADO || deal.funnel_stage_id === S_PERDA_SDR)) {
+        const mes = mesBR(deal.closed_at || deal.updated_at);
+        if (await primeiraVez(mes, `desq:${deal.id}`)) await redis(['INCR', `d:${mes}`]);
       }
     }
   } catch (e) {

@@ -31,26 +31,35 @@ export default async function handler(req, res) {
     cmds.push(['GET', `o:${mes}`]);
     cmds.push(['GET', `n:${mes}`]);
     cmds.push(['GET', `l:${mes}`]);
+    cmds.push(['GET', `d:${mes}`]);
   }
   const r = await pipeline(cmds);
 
+  const CAMPOS = 7; // v:count, v:valor, r, o, n, l, d
   const porMes = {};
   const seriesVendas = [];
   for (let m = 0; m < 12; m++) {
-    const b = m * 6;
+    const b = m * CAMPOS;
     const vendas   = parseInt(r[b] || 0, 10) || 0;
     const valor    = parseFloat(r[b + 1] || 0) || 0;
     const reunioes = parseInt(r[b + 2] || 0, 10) || 0;
     const oport    = parseInt(r[b + 3] || 0, 10) || 0;
     const noshow   = parseInt(r[b + 4] || 0, 10) || 0;
     const leads    = parseInt(r[b + 5] || 0, 10) || 0;
+    const desq     = parseInt(r[b + 6] || 0, 10) || 0;
+
+    // MQL = todo lead que entrou menos os desqualificados (LEAD DESQUALIFICADO / PERDA SDR)
+    const mql = Math.max(0, leads - desq);
 
     seriesVendas.push(vendas || null);
 
     if (vendas || valor || reunioes || oport || noshow || leads) {
       porMes[m] = {
         leads,
+        desqualificados: desq,
+        mql,
         oportunidades: oport,
+        sql: oport, // SQL = leads que chegaram no agendamento (N2)
         reunioes,
         noShowPct: (reunioes + noshow) > 0 ? (noshow / (reunioes + noshow)) * 100 : null,
         vendas,
