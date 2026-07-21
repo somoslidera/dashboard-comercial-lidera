@@ -222,6 +222,18 @@
   .mkt-rrow .c.leads{color:var(--gold-soft);font-family:'Fraunces',serif;font-weight:700}
   .mkt-rrow .c.muted{color:var(--text-2)}
   .mkt-aviso{color:var(--text-2);font-size:clamp(11px,1.4vh,15px);text-align:center;padding:clamp(18px,3vh,44px);line-height:1.6}
+
+  /* ── CAIXA DE PERÍODO PERSONALIZADO ── */
+  .periodo-pop{position:fixed;top:clamp(58px,9vh,86px);right:clamp(18px,2vw,34px);z-index:1500;background:linear-gradient(180deg,var(--surface),var(--bg-1));border:1px solid var(--line-strong);border-radius:14px;padding:16px 18px;box-shadow:0 18px 50px rgba(0,0,0,.5);width:min(92vw,340px)}
+  .periodo-pop[hidden]{display:none}
+  .pp-titulo{font-family:'Fraunces',serif;font-size:16px;margin-bottom:4px;color:var(--gold-soft)}
+  .pp-hint{font-size:11px;color:var(--text-3);margin-bottom:12px}
+  .pp-campos{display:flex;gap:10px;margin-bottom:14px}
+  .pp-campos label{flex:1;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-2);display:flex;flex-direction:column;gap:5px}
+  .pp-campos input{background:rgba(0,0,0,.28);border:1px solid var(--line-strong);border-radius:9px;color:var(--text);font-family:'Figtree',sans-serif;font-size:14px;padding:.5em .6em;color-scheme:dark}
+  .pp-acoes{display:flex;justify-content:flex-end;gap:8px}
+  .pp-btn{font-family:'Figtree',sans-serif;font-weight:700;font-size:14px;border:none;border-radius:100px;padding:.5em 1.2em;cursor:pointer;color:#0A1322;background:linear-gradient(180deg,var(--gold-soft),var(--gold))}
+  .pp-btn.ghost{background:transparent;border:1px solid var(--line-strong);color:var(--text-2)}
 </style>
 </head>
 <body>
@@ -236,9 +248,11 @@
     </div>
     <div class="title">Performance Comercial <b>2026</b></div>
     <div class="header-controls">
-      <div class="view-switch" role="tablist" aria-label="Trocar painel">
-        <button class="vs-btn ativo" data-view="vendas" type="button">Vendas</button>
-        <button class="vs-btn" data-view="marketing" type="button">Marketing</button>
+      <div class="mes-filtro-wrap">
+        <select class="mes-filtro view-select" aria-label="Escolher painel">
+          <option value="vendas">Comercial</option>
+          <option value="marketing">Marketing</option>
+        </select>
       </div>
       <button class="btn-olho" id="btnOlho" type="button" aria-label="Ocultar ou mostrar valores" title="Ocultar/mostrar valores">
         <svg class="olho-aberto" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -338,9 +352,21 @@
     </div>
     <div class="title">Performance de Marketing <b>2026</b></div>
     <div class="header-controls">
-      <div class="view-switch" role="tablist" aria-label="Trocar painel">
-        <button class="vs-btn" data-view="vendas" type="button">Vendas</button>
-        <button class="vs-btn ativo" data-view="marketing" type="button">Marketing</button>
+      <div class="mes-filtro-wrap">
+        <select class="mes-filtro view-select" aria-label="Escolher painel">
+          <option value="vendas">Comercial</option>
+          <option value="marketing">Marketing</option>
+        </select>
+      </div>
+      <div class="mes-filtro-wrap">
+        <select class="mes-filtro" id="mktFiltro" aria-label="Período">
+          <option value="this_month">Este mês</option>
+          <option value="last_7d">Últimos 7 dias</option>
+          <option value="last_30d">Últimos 30 dias</option>
+          <option value="last_90d">Últimos 90 dias</option>
+          <option value="maximum">Máximo (tudo)</option>
+          <option value="custom">Personalizado…</option>
+        </select>
       </div>
     </div>
   </header>
@@ -375,6 +401,19 @@
     <span>Conta 01 · Mentoria</span>
     <span>Atualização automática a cada 1 minuto</span>
   </footer>
+</div>
+
+<div id="periodoPop" class="periodo-pop" hidden>
+  <div class="pp-titulo">Período personalizado</div>
+  <div class="pp-hint" id="ppHint">Escolha as datas para analisar.</div>
+  <div class="pp-campos">
+    <label>De <input type="date" id="ppDe"></label>
+    <label>Até <input type="date" id="ppAte"></label>
+  </div>
+  <div class="pp-acoes">
+    <button type="button" id="ppCancelar" class="pp-btn ghost">Cancelar</button>
+    <button type="button" id="ppAplicar" class="pp-btn">Aplicar</button>
+  </div>
 </div>
 
 <canvas id="confeteCanvas"></canvas>
@@ -951,21 +990,44 @@ function animarContagem(el, destino, sufixo = '') {
   setTimeout(() => { el.textContent = destino + sufixo; }, duracao + 400);
 }
 
-/* ─── Filtro de mês ─── */
+/* ─── Filtro de mês / período ─── */
+let rangeComercial = null; // {mIni, mFim, label} quando "Personalizado"; null = mês único
+
 function popularFiltro(dados) {
   const sel = document.getElementById('mesFiltro');
   const idxAtual = (mesSelecionado !== null && dados.porMes[mesSelecionado] !== undefined)
     ? mesSelecionado : dados.idxAuto;
-  sel.innerHTML = Object.keys(dados.porMes)
-    .map(Number).sort((a, b) => a - b)
-    .map(i => `<option value="${i}"${i === idxAtual ? ' selected' : ''}>${MESES[i].charAt(0).toUpperCase() + MESES[i].slice(1)}</option>`)
+  const meses = Object.keys(dados.porMes).map(Number).sort((a, b) => a - b)
+    .map(i => `<option value="${i}"${(!rangeComercial && i === idxAtual) ? ' selected' : ''}>${MESES[i].charAt(0).toUpperCase() + MESES[i].slice(1)}</option>`)
     .join('');
+  const custom = rangeComercial
+    ? `<option value="custom" selected>Período: ${rangeComercial.label}</option>`
+    : `<option value="custom">Personalizado…</option>`;
+  sel.innerHTML = meses + custom;
 }
 
 document.getElementById('mesFiltro').addEventListener('change', e => {
+  if (e.target.value === 'custom') { abrirPeriodo('vendas'); return; }
+  rangeComercial = null;
   mesSelecionado = parseInt(e.target.value, 10);
   if (ultimoDados) renderizar(ultimoDados);
 });
+
+// soma os meses [mIni..mFim] num objeto no formato de um mês
+function agregarMeses(dados, mIni, mFim) {
+  const a = { leads: 0, oportunidades: 0, reunioes: 0, noshow: 0, vendas: 0, valorVendas: 0, mql: 0, sql: 0, desqualificados: 0, meta: 0, _n: 0 };
+  for (let i = mIni; i <= mFim; i++) {
+    const m = dados.porMes[i]; if (!m) continue;
+    a.leads += m.leads || 0; a.oportunidades += m.oportunidades || 0; a.reunioes += m.reunioes || 0;
+    a.noshow += m.noshow || 0; a.vendas += m.vendas || 0; a.valorVendas += m.valorVendas || 0;
+    a.mql += m.mql || 0; a.sql += m.sql || 0; a.desqualificados += m.desqualificados || 0;
+    a.meta += m.meta || 0; a._n++;
+  }
+  a.noShowPct = (a.reunioes + a.noshow) > 0 ? (a.noshow / (a.reunioes + a.noshow)) * 100 : null;
+  a.conversao = a.reunioes > 0 ? (a.vendas / a.reunioes) * 100 : null;
+  if (!a.meta) a.meta = 100000;
+  return a;
+}
 
 /* ─── Botão do olho: esconder/mostrar os valores em R$ ─── */
 document.body.classList.toggle('ocultar-valores', valoresOcultos);
@@ -983,7 +1045,7 @@ function renderizar(dados) {
 
   const idx = (mesSelecionado !== null && dados.porMes[mesSelecionado] !== undefined)
     ? mesSelecionado : dados.idxAuto;
-  const d = dados.porMes[idx];
+  const d = rangeComercial ? agregarMeses(dados, rangeComercial.mIni, rangeComercial.mFim) : dados.porMes[idx];
 
   // ── Meta de faturamento ──
   const pct = d.meta > 0 ? Math.min((d.valorVendas / d.meta) * 100, 100) : 0;
@@ -1294,13 +1356,13 @@ function trocarView(v) {
   localStorage.setItem('viewAtiva', v);
   VIEWS.vendas.hidden = (v !== 'vendas');
   VIEWS.marketing.hidden = (v !== 'marketing');
-  document.querySelectorAll('.vs-btn').forEach(b => b.classList.toggle('ativo', b.dataset.view === v));
+  document.querySelectorAll('.view-select').forEach(s => { s.value = v; });
   if (v === 'marketing') {
     carregarMarketing();
     if (!mktIntervalo) mktIntervalo = setInterval(carregarMarketing, 60000);
   }
 }
-document.querySelectorAll('.vs-btn').forEach(b => b.addEventListener('click', () => trocarView(b.dataset.view)));
+document.querySelectorAll('.view-select').forEach(s => s.addEventListener('change', () => trocarView(s.value)));
 
 const mS = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
 const mBRL = v => v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1308,23 +1370,55 @@ const mBRL0 = v => v == null ? '—' : v.toLocaleString('pt-BR', { style: 'curre
 const mN = v => v == null ? '—' : v.toLocaleString('pt-BR');
 const mP = v => v == null ? '—' : v.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '%';
 
-// funil usa os dados do CRM já carregados (window.ultimoDados) + leads do Facebook (window.ultimoFb)
+/* ─── Período do marketing (preset do Facebook ou datas exatas) ─── */
+let mktPeriodo = { preset: 'this_month' };
+
+document.getElementById('mktFiltro').addEventListener('change', e => {
+  if (e.target.value === 'custom') { abrirPeriodo('marketing'); return; }
+  mktPeriodo = { preset: e.target.value };
+  carregarMarketing();
+});
+
+// meses (índices) cobertos pelo período atual — pro funil do CRM (que é mensal)
+function mesesDoPeriodoMkt() {
+  const p = mktPeriodo || { preset: 'this_month' };
+  const hoje = new Date();
+  const anoAtual = hoje.getFullYear();
+  let desde, ate = hoje;
+  if (p.since && p.until) { desde = new Date(p.since + 'T00:00:00'); ate = new Date(p.until + 'T00:00:00'); }
+  else if (p.preset === 'last_7d') desde = new Date(hoje.getTime() - 7 * 864e5);
+  else if (p.preset === 'last_30d') desde = new Date(hoje.getTime() - 30 * 864e5);
+  else if (p.preset === 'last_90d') desde = new Date(hoje.getTime() - 90 * 864e5);
+  else if (p.preset === 'maximum') desde = new Date(anoAtual, 0, 1);
+  else desde = new Date(anoAtual, hoje.getMonth(), 1); // this_month
+  const set = new Set();
+  const cur = new Date(desde.getFullYear(), desde.getMonth(), 1);
+  while (cur <= ate) { if (cur.getFullYear() === anoAtual) set.add(cur.getMonth()); cur.setMonth(cur.getMonth() + 1); }
+  if (!set.size) set.add(hoje.getMonth());
+  return [...set];
+}
+
+// funil: leads do Facebook + MQL/SQL do CRM (somando os meses do período)
 function atualizarFunilMkt() {
   const crm = window.ultimoDados, fb = window.ultimoFb;
-  let mes = null;
-  if (crm && crm.porMes) mes = crm.porMes[crm.idxAuto] || crm.porMes[new Date().getMonth()] || null;
+  const meses = mesesDoPeriodoMkt();
+  let leadsCrm = 0, mql = 0, sql = 0, temCrm = false;
+  if (crm && crm.porMes) meses.forEach(i => { const m = crm.porMes[i]; if (m) { leadsCrm += m.leads || 0; mql += m.mql || 0; sql += m.sql || 0; temCrm = true; } });
   const leadsFb = fb && fb.totais ? fb.totais.leads : null;
-  const topo = leadsFb != null ? leadsFb : (mes ? mes.leads : null);
-  const mql = mes ? mes.mql : null, sql = mes ? mes.sql : null;
-  mS('mkfLeads', mN(topo)); mS('mkfMql', mN(mql)); mS('mkfSql', mN(sql));
-  mS('mkcvMql', (topo && mql != null) ? mP(mql / topo * 100) : '—');
-  mS('mkcvSql', (mql && sql != null) ? mP(sql / mql * 100) : '—');
+  const topo = leadsFb != null ? leadsFb : (temCrm ? leadsCrm : null);
+  mS('mkfLeads', mN(topo));
+  mS('mkfMql', temCrm ? mN(mql) : '—');
+  mS('mkfSql', temCrm ? mN(sql) : '—');
+  mS('mkcvMql', (topo && temCrm) ? mP(mql / topo * 100) : '—');
+  mS('mkcvSql', (temCrm && mql) ? mP(sql / mql * 100) : '—');
 }
 
 async function carregarMarketing() {
+  const p = mktPeriodo || { preset: 'this_month' };
+  const qs = p.since ? ('since=' + p.since + '&until=' + p.until) : ('preset=' + (p.preset || 'this_month'));
   let fb = null;
   try {
-    const r = await fetch('/api/facebook?t=' + Date.now(), { cache: 'no-store' });
+    const r = await fetch('/api/facebook?' + qs + '&t=' + Date.now(), { cache: 'no-store' });
     if (r.status === 401) { location.href = '/login.html'; return; }
     fb = await r.json();
   } catch (e) {}
@@ -1337,7 +1431,7 @@ async function carregarMarketing() {
     mS('mkCtrSub', mN(t.cliques) + ' cliques · ' + mN(t.impressoes) + ' impr.');
     document.getElementById('mkRank').innerHTML = cs.length
       ? cs.slice(0, 8).map((c, i) => `<div class="mkt-rrow"><div class="nome"><span class="pos">${i + 1}</span><span title="${c.nome}">${c.nome || '—'}</span></div><div class="c muted">${mBRL0(c.investido)}</div><div class="c leads">${mN(c.leads)}</div><div class="c">${c.cpl != null ? mBRL(c.cpl) : '—'}</div><div class="c muted">${mP(c.ctr)}</div></div>`).join('')
-      : '<div class="mkt-aviso">Nenhuma campanha [PLL] com gasto neste mês.</div>';
+      : '<div class="mkt-aviso">Nenhuma campanha [PLL] com gasto no período.</div>';
     mS('mkStatus', 'Facebook conectado · ' + cs.length + ' campanhas [PLL]');
   } else {
     const motivo = fb && fb.erro === 'sem_token' ? 'Aguardando o token do Facebook no Vercel'
@@ -1348,6 +1442,38 @@ async function carregarMarketing() {
   }
   atualizarFunilMkt();
 }
+
+/* ─── Caixa de período personalizado (compartilhada Comercial/Marketing) ─── */
+let periodoCtx = 'vendas';
+function abrirPeriodo(ctx) {
+  periodoCtx = ctx;
+  document.getElementById('ppHint').textContent = ctx === 'vendas'
+    ? 'O comercial agrupa por mês (as datas viram o intervalo de meses).'
+    : 'Datas exatas das campanhas do Facebook.';
+  document.getElementById('periodoPop').hidden = false;
+}
+function fecharPeriodo() {
+  document.getElementById('periodoPop').hidden = true;
+  if (ultimoDados) popularFiltro(ultimoDados);
+  const mf = document.getElementById('mktFiltro');
+  if (mf) mf.value = mktPeriodo.since ? 'custom' : (mktPeriodo.preset || 'this_month');
+}
+document.getElementById('ppCancelar').addEventListener('click', fecharPeriodo);
+document.getElementById('ppAplicar').addEventListener('click', () => {
+  let de = document.getElementById('ppDe').value, ate = document.getElementById('ppAte').value;
+  if (!de || !ate) return;
+  if (de > ate) { const t = de; de = ate; ate = t; }
+  document.getElementById('periodoPop').hidden = true;
+  const rot = de.slice(8, 10) + '/' + de.slice(5, 7) + ' – ' + ate.slice(8, 10) + '/' + ate.slice(5, 7);
+  if (periodoCtx === 'vendas') {
+    rangeComercial = { mIni: parseInt(de.slice(5, 7), 10) - 1, mFim: parseInt(ate.slice(5, 7), 10) - 1, label: rot };
+    mesSelecionado = null;
+    if (ultimoDados) renderizar(ultimoDados);
+  } else {
+    mktPeriodo = { since: de, until: ate, label: rot };
+    carregarMarketing();
+  }
+});
 
 carregarDados();
 atualizarMapa();

@@ -64,6 +64,7 @@ export default async function handler(req, res) {
         oportunidades: oport,
         sql: oport, // SQL = leads que chegaram no agendamento (N2)
         reunioes,
+        noshow,
         noShowPct: (reunioes + noshow) > 0 ? (noshow / (reunioes + noshow)) * 100 : null,
         vendas,
         valorVendas: valor,

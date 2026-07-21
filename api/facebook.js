@@ -41,11 +41,15 @@ export default async function handler(req, res) {
   if (!autorizado(req)) return res.status(401).json({ erro: 'nao_autorizado' });
   if (!TOKEN) return res.status(200).json({ erro: 'sem_token', totais: null, campanhas: [] });
 
-  const preset = (req.query && req.query.preset) || 'this_month';
+  const q = req.query || {};
+  // período: datas exatas (since/until) OU um preset do Facebook (this_month, last_30d, maximum…)
+  const periodo = (q.since && q.until)
+    ? `time_range=${encodeURIComponent(JSON.stringify({ since: q.since, until: q.until }))}`
+    : `date_preset=${encodeURIComponent(q.preset || 'this_month')}`;
   const fields = 'campaign_name,spend,impressions,clicks,ctr,cpc,results,cost_per_result,actions';
   const filtering = JSON.stringify([{ field: 'campaign.name', operator: 'CONTAIN', value: PREFIXO }]);
   const url = `https://graph.facebook.com/${API_VER}/act_${AD_ACCOUNT}/insights`
-    + `?level=campaign&date_preset=${encodeURIComponent(preset)}`
+    + `?level=campaign&${periodo}`
     + `&filtering=${encodeURIComponent(filtering)}`
     + `&fields=${encodeURIComponent(fields)}&limit=500`;
 
@@ -88,5 +92,5 @@ export default async function handler(req, res) {
   };
 
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=300');
-  return res.status(200).json({ periodo: preset, atualizadoEm: new Date().toISOString(), totais, campanhas: ativas });
+  return res.status(200).json({ periodo, atualizadoEm: new Date().toISOString(), totais, campanhas: ativas });
 }
