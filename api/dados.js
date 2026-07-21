@@ -1,6 +1,8 @@
 // Lê os contadores do Redis e entrega no formato que o dashboard usa.
 // Cache de ~55s: mesmo com a TV atualizando de minuto em minuto, o Redis é lido ~1x/min.
 
+import { autorizado } from './_auth.js';
+
 const R_URL = process.env.KV_REST_API_URL;
 const R_TOKEN = process.env.KV_REST_API_TOKEN;
 const META_PADRAO = 100000;
@@ -16,6 +18,7 @@ async function pipeline(cmds) {
 }
 
 export default async function handler(req, res) {
+  if (!autorizado(req)) return res.status(401).json({ erro: 'nao_autorizado' });
   if (!R_URL || !R_TOKEN) return res.status(500).json({ erro: 'Redis nao configurado' });
 
   const agoraBR = new Date(Date.now() - 3 * 3600 * 1000); // fuso Brasil

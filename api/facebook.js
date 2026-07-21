@@ -1,6 +1,7 @@
 // Puxa as campanhas [PLL] da conta de anúncios (Meta/Facebook) AO VIVO via Graph API.
 // Requer env: FB_ACCESS_TOKEN (token de usuário do sistema, permissão ads_read).
 // Opcionais: FB_AD_ACCOUNT (default = Conta 01 - Mentoria), FB_API_VERSION.
+import { autorizado } from './_auth.js';
 
 const TOKEN = process.env.FB_ACCESS_TOKEN;
 const AD_ACCOUNT = process.env.FB_AD_ACCOUNT || '1353636702742936';
@@ -37,6 +38,7 @@ function leadsDaLinha(row) {
 }
 
 export default async function handler(req, res) {
+  if (!autorizado(req)) return res.status(401).json({ erro: 'nao_autorizado' });
   if (!TOKEN) return res.status(200).json({ erro: 'sem_token', totais: null, campanhas: [] });
 
   const preset = (req.query && req.query.preset) || 'this_month';

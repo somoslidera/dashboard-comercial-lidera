@@ -175,12 +175,59 @@
     .progress-fill{transition:none}
     .ponto-pulso{animation:none}
   }
+
+  /* ── SELETOR DE PAINEL (Vendas / Marketing) ── */
+  .view-switch{display:inline-flex;background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;padding:3px;gap:2px}
+  .vs-btn{appearance:none;border:none;background:transparent;color:var(--text-2);font-family:'Figtree',sans-serif;font-weight:700;font-size:clamp(11px,1.5vh,15px);letter-spacing:.02em;padding:.5em 1.05em;border-radius:8px;cursor:pointer;transition:background .2s,color .2s}
+  .vs-btn:hover{color:var(--gold-soft)}
+  .vs-btn.ativo{background:linear-gradient(180deg,var(--gold-soft),var(--gold));color:#0A1322}
+  #viewMarketing[hidden]{display:none}
+
+  /* ── PAINEL DE MARKETING ── */
+  .mkt-kpis{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap)}
+  .mkt-kpi{padding:clamp(12px,2vh,22px) clamp(14px,1.5vw,26px);display:flex;flex-direction:column;gap:clamp(5px,.8vh,11px)}
+  .mkt-kpi .mk-top{display:flex;align-items:center;gap:9px;color:var(--text-2);font-weight:700;font-size:clamp(9px,1.15vh,12px);text-transform:uppercase;letter-spacing:.12em}
+  .mkt-kpi .mk-ic{width:clamp(26px,3.4vh,38px);height:clamp(26px,3.4vh,38px);border-radius:9px;display:grid;place-items:center;background:rgba(203,167,94,.1);border:1px solid rgba(203,167,94,.28);font-size:clamp(13px,1.7vh,18px)}
+  .mkt-kpi .mk-val{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(24px,4.4vh,46px);line-height:1;font-variant-numeric:tabular-nums}
+  .mkt-kpi.destaque .mk-val{color:var(--gold-soft)}
+  .mkt-kpi .mk-sub{color:var(--text-3);font-size:clamp(9px,1.15vh,12px);font-weight:600}
+
+  .mkt-body{flex:1;display:grid;grid-template-columns:1.05fr 1fr;gap:var(--gap);min-height:0}
+  .mkt-panel{display:flex;flex-direction:column;padding:clamp(14px,2vh,24px) clamp(14px,1.5vw,24px);min-height:0}
+  .mkt-panel h2{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(14px,2vh,21px);display:flex;align-items:center;gap:10px;margin-bottom:clamp(10px,1.6vh,20px)}
+  .mkt-panel h2 .tag{font-family:'Figtree',sans-serif;font-size:clamp(8px,1vh,11px);font-weight:800;color:var(--gold-soft);background:rgba(203,167,94,.12);padding:3px 9px;border-radius:100px;letter-spacing:.12em}
+
+  .mkt-funil{flex:1;display:flex;flex-direction:column;justify-content:center;gap:clamp(8px,1.4vh,18px)}
+  .mkt-etapa .barra{height:clamp(50px,9vh,100px);border-radius:14px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(16px,1.8vw,32px);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+  .mkt-etapa .lbl{font-weight:700;font-size:clamp(12px,1.7vh,20px)}
+  .mkt-etapa .lbl small{display:block;font-weight:500;font-size:clamp(9px,1.05vh,12px);opacity:.72;text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+  .mkt-etapa .n{font-family:'Fraunces',serif;font-weight:700;font-size:clamp(26px,4.6vh,52px);line-height:1}
+  .mkt-e1 .barra{background:linear-gradient(100deg,rgba(106,160,245,.30),rgba(106,160,245,.10));border:1px solid rgba(106,160,245,.42)}
+  .mkt-e2 .barra{background:linear-gradient(100deg,rgba(203,167,94,.30),rgba(203,167,94,.10));border:1px solid rgba(203,167,94,.44)}
+  .mkt-e3 .barra{background:linear-gradient(100deg,rgba(79,209,165,.30),rgba(79,209,165,.10));border:1px solid rgba(79,209,165,.44)}
+  .mkt-e1 .n{color:#bcd9ff}.mkt-e2 .n{color:var(--gold-soft)}.mkt-e3 .n{color:#8ff0cf}
+  .mkt-conv{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--text-2);font-size:clamp(10px,1.3vh,14px);font-weight:600}
+  .mkt-conv .pct{color:var(--text);font-weight:800}
+  .mkt-conv .arrow{color:var(--gold)}
+
+  .mkt-rank{flex:1;display:flex;flex-direction:column;gap:clamp(4px,.7vh,9px);overflow:hidden;min-height:0}
+  .mkt-rhead,.mkt-rrow{display:grid;grid-template-columns:1.7fr .9fr .6fr .8fr .6fr;gap:8px;align-items:center}
+  .mkt-rhead{color:var(--text-3);font-size:clamp(8px,1vh,11px);font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:0 clamp(8px,1vw,14px) 6px;border-bottom:1px solid var(--line)}
+  .mkt-rhead .r{text-align:right}
+  .mkt-rrow{background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:11px;padding:clamp(7px,1.1vh,13px) clamp(9px,1vw,15px)}
+  .mkt-rrow .nome{font-weight:600;font-size:clamp(11px,1.5vh,16px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:9px}
+  .mkt-rrow .pos{width:clamp(19px,2.4vh,26px);height:clamp(19px,2.4vh,26px);flex:none;border-radius:7px;display:grid;place-items:center;font-family:'Fraunces',serif;font-weight:700;font-size:clamp(10px,1.3vh,14px);background:rgba(203,167,94,.12);color:var(--gold-soft)}
+  .mkt-rrow:first-child .pos{background:linear-gradient(145deg,var(--gold-soft),var(--gold));color:#0A1322}
+  .mkt-rrow .c{text-align:right;font-variant-numeric:tabular-nums;font-size:clamp(11px,1.5vh,16px);font-weight:600}
+  .mkt-rrow .c.leads{color:var(--gold-soft);font-family:'Fraunces',serif;font-weight:700}
+  .mkt-rrow .c.muted{color:var(--text-2)}
+  .mkt-aviso{color:var(--text-2);font-size:clamp(11px,1.4vh,15px);text-align:center;padding:clamp(18px,3vh,44px);line-height:1.6}
 </style>
 </head>
 <body>
 
 
-<div class="dashboard">
+<div class="dashboard" id="viewVendas">
 
   <header>
     <div class="brand-block">
@@ -189,6 +236,10 @@
     </div>
     <div class="title">Performance Comercial <b>2026</b></div>
     <div class="header-controls">
+      <div class="view-switch" role="tablist" aria-label="Trocar painel">
+        <button class="vs-btn ativo" data-view="vendas" type="button">Vendas</button>
+        <button class="vs-btn" data-view="marketing" type="button">Marketing</button>
+      </div>
       <button class="btn-olho" id="btnOlho" type="button" aria-label="Ocultar ou mostrar valores" title="Ocultar/mostrar valores">
         <svg class="olho-aberto" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
         <svg class="olho-fechado" viewBox="0 0 24 24"><path d="M9.9 5.2A9.5 9.5 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.3 3.9M6.3 6.3A17 17 0 0 0 2 12s3.6 7 10 7a9.5 9.5 0 0 0 3.3-.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18"/></svg>
@@ -276,6 +327,54 @@
     <span>Atualização automática a cada 1 minuto</span>
   </footer>
 
+</div>
+
+<!-- ══════════════════ PAINEL DE MARKETING ══════════════════ -->
+<div class="dashboard mkt" id="viewMarketing" hidden>
+  <header>
+    <div class="brand-block">
+      <div class="overline">Inteligência de Marketing</div>
+      <div class="brand">Lidera <span>Soluções</span></div>
+    </div>
+    <div class="title">Performance de Marketing <b>2026</b></div>
+    <div class="header-controls">
+      <div class="view-switch" role="tablist" aria-label="Trocar painel">
+        <button class="vs-btn" data-view="vendas" type="button">Vendas</button>
+        <button class="vs-btn ativo" data-view="marketing" type="button">Marketing</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="mkt-kpis">
+    <div class="card mkt-kpi"><div class="mk-top"><span class="mk-ic">💰</span>Investido</div><div class="mk-val" id="mkInvest">—</div><div class="mk-sub" id="mkInvestSub">no mês</div></div>
+    <div class="card mkt-kpi destaque"><div class="mk-top"><span class="mk-ic">🎯</span>Leads gerados</div><div class="mk-val" id="mkLeads">—</div><div class="mk-sub">campanhas [PLL]</div></div>
+    <div class="card mkt-kpi"><div class="mk-top"><span class="mk-ic">🏷️</span>CPL</div><div class="mk-val" id="mkCpl">—</div><div class="mk-sub">custo por lead</div></div>
+    <div class="card mkt-kpi"><div class="mk-top"><span class="mk-ic">👆</span>CTR</div><div class="mk-val" id="mkCtr">—</div><div class="mk-sub" id="mkCtrSub">taxa de clique</div></div>
+  </section>
+
+  <section class="mkt-body">
+    <div class="card mkt-panel">
+      <h2>Funil de conversão <span class="tag">LEADS › MQL › SQL</span></h2>
+      <div class="mkt-funil">
+        <div class="mkt-etapa mkt-e1"><div class="barra"><div class="lbl">Leads gerados<small>Facebook</small></div><div class="n" id="mkfLeads">—</div></div></div>
+        <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvMql">—</span> viram MQL</div>
+        <div class="mkt-etapa mkt-e2"><div class="barra"><div class="lbl">MQL<small>Leads qualificados · CRM</small></div><div class="n" id="mkfMql">—</div></div></div>
+        <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvSql">—</span> viram SQL</div>
+        <div class="mkt-etapa mkt-e3"><div class="barra"><div class="lbl">SQL<small>Agendaram reunião · CRM</small></div><div class="n" id="mkfSql">—</div></div></div>
+      </div>
+    </div>
+    <div class="card mkt-panel">
+      <h2>Ranking de campanhas <span class="tag">[PLL]</span></h2>
+      <div class="mkt-rhead"><div>Campanha</div><div class="r">Investido</div><div class="r">Leads</div><div class="r">CPL</div><div class="r">CTR</div></div>
+      <div class="mkt-rank" id="mkRank"></div>
+    </div>
+  </section>
+
+  <footer>
+    <span id="mkStatus">Carregando…</span>
+    <span>Conta 01 · Mentoria</span>
+    <span>Atualização automática a cada 1 minuto</span>
+  </footer>
 </div>
 
 <canvas id="confeteCanvas"></canvas>
@@ -956,7 +1055,10 @@ async function carregarDados() {
   try {
     // fonte automática: dados vindos do LeadForge (via webhooks) somados no Redis
     const resp = await fetch('/api/dados?t=' + Date.now(), { cache: 'no-store' });
+    if (resp.status === 401) { location.href = '/login.html'; return; }
     const dados = await resp.json();
+    window.ultimoDados = dados;
+    if (viewAtiva === 'marketing') atualizarFunilMkt();
     if (dados && dados.porMes && Object.keys(dados.porMes).length) {
       // detecta nova venda no MÊS VIGENTE → celebração (confete + sino)
       const vendasMesAgora = dados.series.vendas[new Date().getMonth()] || 0;
@@ -1179,8 +1281,77 @@ btnAtivarSom.addEventListener('click', ativarSomTV);
 document.addEventListener('keydown', ativarSomTV); // qualquer tecla/OK do controle também libera
 setTimeout(() => { try { btnAtivarSom.focus(); } catch (e) {} }, 120);
 
+/* ═══════════════════════════════════════════════════════════
+   ALTERNÂNCIA VENDAS / MARKETING + PAINEL DE MARKETING
+   ═══════════════════════════════════════════════════════════ */
+const VIEWS = { vendas: document.getElementById('viewVendas'), marketing: document.getElementById('viewMarketing') };
+let viewAtiva = localStorage.getItem('viewAtiva') || 'vendas';
+let mktIntervalo = null;
+
+function trocarView(v) {
+  if (!VIEWS[v]) v = 'vendas';
+  viewAtiva = v;
+  localStorage.setItem('viewAtiva', v);
+  VIEWS.vendas.hidden = (v !== 'vendas');
+  VIEWS.marketing.hidden = (v !== 'marketing');
+  document.querySelectorAll('.vs-btn').forEach(b => b.classList.toggle('ativo', b.dataset.view === v));
+  if (v === 'marketing') {
+    carregarMarketing();
+    if (!mktIntervalo) mktIntervalo = setInterval(carregarMarketing, 60000);
+  }
+}
+document.querySelectorAll('.vs-btn').forEach(b => b.addEventListener('click', () => trocarView(b.dataset.view)));
+
+const mS = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+const mBRL = v => v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const mBRL0 = v => v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+const mN = v => v == null ? '—' : v.toLocaleString('pt-BR');
+const mP = v => v == null ? '—' : v.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '%';
+
+// funil usa os dados do CRM já carregados (window.ultimoDados) + leads do Facebook (window.ultimoFb)
+function atualizarFunilMkt() {
+  const crm = window.ultimoDados, fb = window.ultimoFb;
+  let mes = null;
+  if (crm && crm.porMes) mes = crm.porMes[crm.idxAuto] || crm.porMes[new Date().getMonth()] || null;
+  const leadsFb = fb && fb.totais ? fb.totais.leads : null;
+  const topo = leadsFb != null ? leadsFb : (mes ? mes.leads : null);
+  const mql = mes ? mes.mql : null, sql = mes ? mes.sql : null;
+  mS('mkfLeads', mN(topo)); mS('mkfMql', mN(mql)); mS('mkfSql', mN(sql));
+  mS('mkcvMql', (topo && mql != null) ? mP(mql / topo * 100) : '—');
+  mS('mkcvSql', (mql && sql != null) ? mP(sql / mql * 100) : '—');
+}
+
+async function carregarMarketing() {
+  let fb = null;
+  try {
+    const r = await fetch('/api/facebook?t=' + Date.now(), { cache: 'no-store' });
+    if (r.status === 401) { location.href = '/login.html'; return; }
+    fb = await r.json();
+  } catch (e) {}
+  window.ultimoFb = fb;
+
+  if (fb && fb.totais) {
+    const t = fb.totais, cs = fb.campanhas || [];
+    mS('mkInvest', mBRL0(t.investido)); mS('mkLeads', mN(t.leads)); mS('mkCpl', mBRL(t.cpl)); mS('mkCtr', mP(t.ctr));
+    mS('mkInvestSub', mN(cs.length) + ' campanha(s) ativa(s)');
+    mS('mkCtrSub', mN(t.cliques) + ' cliques · ' + mN(t.impressoes) + ' impr.');
+    document.getElementById('mkRank').innerHTML = cs.length
+      ? cs.slice(0, 8).map((c, i) => `<div class="mkt-rrow"><div class="nome"><span class="pos">${i + 1}</span><span title="${c.nome}">${c.nome || '—'}</span></div><div class="c muted">${mBRL0(c.investido)}</div><div class="c leads">${mN(c.leads)}</div><div class="c">${c.cpl != null ? mBRL(c.cpl) : '—'}</div><div class="c muted">${mP(c.ctr)}</div></div>`).join('')
+      : '<div class="mkt-aviso">Nenhuma campanha [PLL] com gasto neste mês.</div>';
+    mS('mkStatus', 'Facebook conectado · ' + cs.length + ' campanhas [PLL]');
+  } else {
+    const motivo = fb && fb.erro === 'sem_token' ? 'Aguardando o token do Facebook no Vercel'
+      : (fb && fb.detalhe ? ('Facebook: ' + fb.detalhe) : 'Sem conexão com o Facebook');
+    ['mkInvest', 'mkLeads', 'mkCpl', 'mkCtr'].forEach(id => mS(id, '—'));
+    document.getElementById('mkRank').innerHTML = '<div class="mkt-aviso">' + motivo + '.<br>Assim que o token for adicionado, os dados aparecem aqui.</div>';
+    mS('mkStatus', motivo);
+  }
+  atualizarFunilMkt();
+}
+
 carregarDados();
 atualizarMapa();
+trocarView(viewAtiva);
 setInterval(carregarDados, INTERVALO_ATUALIZACAO_MIN * 60 * 1000);       // KPIs, meta, vendas
 setInterval(atualizarMapa, INTERVALO_CLIENTES_MIN * 60 * 1000);          // só o mapa de clientes
 </script>
