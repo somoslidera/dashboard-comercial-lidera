@@ -181,7 +181,7 @@
   .vs-btn{appearance:none;border:none;background:transparent;color:var(--text-2);font-family:'Figtree',sans-serif;font-weight:700;font-size:clamp(11px,1.5vh,15px);letter-spacing:.02em;padding:.5em 1.05em;border-radius:8px;cursor:pointer;transition:background .2s,color .2s}
   .vs-btn:hover{color:var(--gold-soft)}
   .vs-btn.ativo{background:linear-gradient(180deg,var(--gold-soft),var(--gold));color:#0A1322}
-  #viewMarketing[hidden]{display:none}
+  .dashboard[hidden]{display:none}   /* o hidden precisa vencer o display:flex do .dashboard */
 
   /* ── PAINEL DE MARKETING ── */
   .mkt-kpis{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap)}
