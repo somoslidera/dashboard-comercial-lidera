@@ -76,6 +76,15 @@ export default async function handler(req, res) {
     const out = await pipeline([['LRANGE', 'debug:tags', 0, -1]]);
     return res.status(200).json({ debugtags: (out[0] || []).map((x) => { try { return JSON.parse(x); } catch { return x; } }) });
   }
+  // SONDAGEM TEMPORÁRIA: pergunta a API do LeadForge as etiquetas de um lead (REMOVER depois)
+  if (q.lfprobe) {
+    const key = process.env.LEADFORGE_API_KEY || '';
+    const campo = q.campo || 'name';
+    const base = 'https://api.leadforge.com.br/api/v1';
+    const tentar = async (url) => { try { const rr = await fetch(url, { headers: { 'X-API-Key': key } }); return { url, status: rr.status, body: await rr.json() }; } catch (e) { return { url, erro: String(e) }; } };
+    const busca = await tentar(`${base}/leads/search?${campo}=${encodeURIComponent(q.lfprobe)}`);
+    return res.status(200).json({ lfprobe: busca });
+  }
 
   // período personalizado por DIA (a partir de RASTREIO_DIARIO_INICIO)
   if (q.since && q.until) return periodoPorDia(res, q.since, q.until);
