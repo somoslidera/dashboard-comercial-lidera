@@ -57,10 +57,10 @@ Um link só, com um **dropdown** no cabeçalho que alterna entre **Comercial** e
 ## Funil por FAIXA de valor (Ideia 2)
 - 6 faixas (etiqueta do formulário do Facebook → vira **tag na NEGOCIAÇÃO**, não no lead): `Até 50k`(f1) / `50k - 80k`(f2) / `80k - 100k`(f3) / `100k - 150k`(f4) / `150k - 300k`(f5) / `Acima 300k`(f6).
 - **A faixa NÃO vem no evento de webhook** (`lead.tag_added` não diz qual tag; `/leads/search` não traz tags). Vem via **`GET /deals/search?lead_id={id}` → `deals[].tags[].name`**. O webhook (`faixaDoLead`/`obterFaixa`) consulta isso e cacheia `banda:{lead_id}`.
-- Contadores por faixa/mês (SETs de lead_id): `fx:l:` `fx:sql:` `fx:r:` `fx:v:` `fx:d:` + `fx:vv:` (faturamento). `/api/dados` expõe `porFaixa` (mês atual) e `?faixasMes=`.
+- **Modelo "resolve na leitura" (importante — a faixa reflete SEMPRE a tag de hoje):** o webhook guarda só QUEM passou em cada etapa, sem faixa na chave: `fxs:l:{mes}` `fxs:sql:{mes}` `fxs:r:{mes}` `fxs:d:{mes}` (SETs de lead_id) + `fxs:v:{mes}` (HASH lead_id→valor da venda). A faixa de cada lead fica em `banda:{lead_id}`. `porFaixaDoMes` (em dados.js) lê os SETs e **agrupa pela `banda:{lead_id}` ATUAL** de cada lead → sempre a tag de hoje, inclusive faturamento. `porFaixa` só é calculado **sob demanda** (`?faixasMes=`), fora da resposta normal (economiza Redis).
+- **Correção de tag:** `lead.tag_added`/`lead.tag_removed` → `ressincronizarFaixa()` só re-consulta e atualiza `banda:{lead_id}`. Como a matriz agrupa na leitura, trocar a tag corrige tudo (contagens E faturamento) automaticamente.
 - **UI:** a faixa é um **FILTRO do funil de Marketing** (dropdown `#mktFaixa`: Todas + 6 faixas). O funil tem 5 etapas: **Leads → MQL → SQL → Reuniões → Vendas**. NÃO é um painel separado.
 - FORWARD-ONLY: só coleta a partir de 22/07/2026 (sem backfill — API não lista em massa, testado exaustivamente).
-- **Correção de tag:** o webhook trata `lead.tag_added`/`lead.tag_removed` → `ressincronizarFaixa()` reconsulta a faixa e MOVE o lead entre os SETs (l/sql/r/v/d, últimos 3 meses). Ressalva: o faturamento por faixa (`fx:vv`) NÃO é movido numa troca de tag pós-venda (raro).
 
 ## Estado atual (tudo FEITO e no ar, exceto onde indicado)
 - ✅ Comercial + Marketing num link, dropdown, login, Facebook ao vivo.
