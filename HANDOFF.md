@@ -59,7 +59,8 @@ Um link só, com um **dropdown** no cabeçalho que alterna entre **Comercial** e
 - **A faixa NÃO vem no evento de webhook** (`lead.tag_added` não diz qual tag; `/leads/search` não traz tags). Vem via **`GET /deals/search?lead_id={id}` → `deals[].tags[].name`**. O webhook (`faixaDoLead`/`obterFaixa`) consulta isso e cacheia `banda:{lead_id}`.
 - Contadores por faixa/mês (SETs de lead_id): `fx:l:` `fx:sql:` `fx:r:` `fx:v:` `fx:d:` + `fx:vv:` (faturamento). `/api/dados` expõe `porFaixa` (mês atual) e `?faixasMes=`.
 - **UI:** a faixa é um **FILTRO do funil de Marketing** (dropdown `#mktFaixa`: Todas + 6 faixas). O funil tem 5 etapas: **Leads → MQL → SQL → Reuniões → Vendas**. NÃO é um painel separado.
-- FORWARD-ONLY: só coleta a partir de 22/07/2026 (sem backfill — API não lista em massa).
+- FORWARD-ONLY: só coleta a partir de 22/07/2026 (sem backfill — API não lista em massa, testado exaustivamente).
+- **Correção de tag:** o webhook trata `lead.tag_added`/`lead.tag_removed` → `ressincronizarFaixa()` reconsulta a faixa e MOVE o lead entre os SETs (l/sql/r/v/d, últimos 3 meses). Ressalva: o faturamento por faixa (`fx:vv`) NÃO é movido numa troca de tag pós-venda (raro).
 
 ## Estado atual (tudo FEITO e no ar, exceto onde indicado)
 - ✅ Comercial + Marketing num link, dropdown, login, Facebook ao vivo.
