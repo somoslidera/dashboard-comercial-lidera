@@ -29,30 +29,36 @@ async function pipeline(cmds) {
   return j.map((x) => x.result);
 }
 
-// funil segmentado por faixa de valor, de um mês "YYYY-MM"
+// funil por faixa de um mês "YYYY-MM".
+// Guardamos só QUEM passou em cada etapa; a FAIXA é resolvida agora (leitura),
+// olhando a tag ATUAL de cada lead (`banda:{lead_id}`) — então reflete sempre a tag de hoje.
 async function porFaixaDoMes(mes) {
-  const cmds = [];
-  FAIXAS.forEach((f) => {
-    cmds.push(['SCARD', `fx:l:${f.cod}:${mes}`]);
-    cmds.push(['SCARD', `fx:d:${f.cod}:${mes}`]);
-    cmds.push(['SCARD', `fx:sql:${f.cod}:${mes}`]);
-    cmds.push(['SCARD', `fx:r:${f.cod}:${mes}`]);
-    cmds.push(['SCARD', `fx:v:${f.cod}:${mes}`]);
-    cmds.push(['GET', `fx:vv:${f.cod}:${mes}`]);
-  });
-  const r = await pipeline(cmds);
-  const out = [];
-  FAIXAS.forEach((f, i) => {
-    const b = i * 6;
-    const leads = parseInt(r[b] || 0, 10) || 0;
-    const desq = parseInt(r[b + 1] || 0, 10) || 0;
-    const sql = parseInt(r[b + 2] || 0, 10) || 0;
-    const reunioes = parseInt(r[b + 3] || 0, 10) || 0;
-    const vendas = parseInt(r[b + 4] || 0, 10) || 0;
-    const faturamento = parseFloat(r[b + 5] || 0) || 0;
-    out.push({ cod: f.cod, nome: f.nome, leads, mql: Math.max(0, leads - desq), sql, reunioes, vendas, faturamento });
-  });
-  return out;
+  const base = await pipeline([
+    ['SMEMBERS', `fxs:l:${mes}`],
+    ['SMEMBERS', `fxs:sql:${mes}`],
+    ['SMEMBERS', `fxs:r:${mes}`],
+    ['SMEMBERS', `fxs:d:${mes}`],
+    ['HGETALL', `fxs:v:${mes}`]
+  ]);
+  const setL = base[0] || [], setSql = base[1] || [], setR = base[2] || [], setD = base[3] || [];
+  const vRaw = base[4] || [];
+  const vendaMap = {};
+  if (Array.isArray(vRaw)) { for (let i = 0; i < vRaw.length; i += 2) vendaMap[vRaw[i]] = parseFloat(vRaw[i + 1]) || 0; }
+  else Object.keys(vRaw).forEach((k) => { vendaMap[k] = parseFloat(vRaw[k]) || 0; });
+  const setV = Object.keys(vendaMap);
+
+  const ids = [...new Set([].concat(setL, setSql, setR, setD, setV))];
+  const bandas = ids.length ? await pipeline(ids.map((id) => ['GET', `banda:${id}`])) : [];
+  const faixaDe = {};
+  ids.forEach((id, i) => { faixaDe[id] = bandas[i]; });
+
+  const acc = {};
+  FAIXAS.forEach((f) => { acc[f.cod] = { cod: f.cod, nome: f.nome, leads: 0, desq: 0, sql: 0, reunioes: 0, vendas: 0, faturamento: 0 }; });
+  const contar = (set, campo) => set.forEach((id) => { const c = faixaDe[id]; if (acc[c]) acc[c][campo]++; });
+  contar(setL, 'leads'); contar(setSql, 'sql'); contar(setR, 'reunioes'); contar(setD, 'desq');
+  setV.forEach((id) => { const c = faixaDe[id]; if (acc[c]) { acc[c].vendas++; acc[c].faturamento += vendaMap[id]; } });
+
+  return FAIXAS.map((f) => { const a = acc[f.cod]; return { cod: a.cod, nome: a.nome, leads: a.leads, mql: Math.max(0, a.leads - a.desq), sql: a.sql, reunioes: a.reunioes, vendas: a.vendas, faturamento: a.faturamento }; });
 }
 
 // lista os dias "YYYY-MM-DD" de since até until (inclusive), com trava de segurança
@@ -176,9 +182,6 @@ export default async function handler(req, res) {
     idxAuto = chaves.length ? Math.max(...chaves) : agoraBR.getUTCMonth();
   }
 
-  const mesAtualStr = `${ano}-${String(agoraBR.getUTCMonth() + 1).padStart(2, '0')}`;
-  const porFaixa = await porFaixaDoMes(mesAtualStr).catch(() => []);
-
   res.setHeader('Cache-Control', 's-maxage=55, stale-while-revalidate=30');
-  return res.status(200).json({ porMes, idxAuto, series: { vendas: seriesVendas }, rastreioDiarioInicio: RASTREIO_DIARIO_INICIO, porFaixa });
+  return res.status(200).json({ porMes, idxAuto, series: { vendas: seriesVendas }, rastreioDiarioInicio: RASTREIO_DIARIO_INICIO });
 }

@@ -54,31 +54,12 @@ async function obterFaixa(leadId) {
   return cod;
 }
 
-// últimos N meses "YYYY-MM" no fuso BR
-function ultimosMeses(n) {
-  const out = [];
-  const d = new Date(Date.now() - 3 * 3600 * 1000);
-  for (let i = 0; i < n; i++) { out.push(d.toISOString().slice(0, 7)); d.setUTCMonth(d.getUTCMonth() - 1); }
-  return out;
-}
-
-// quando a tag do lead muda: re-consulta a faixa e MOVE o lead entre os conjuntos de faixa
+// quando a tag do lead muda: só atualiza a faixa ATUAL do lead (a matriz é resolvida na leitura)
 async function ressincronizarFaixa(leadId) {
   if (!leadId) return;
-  const nova = await faixaDoLead(leadId);                 // faixa atual (fresh)
-  const antiga = await redis(['GET', `banda:${leadId}`]);
-  if (nova === antiga) return;                            // não mudou → nada a fazer
+  const nova = await faixaDoLead(leadId);   // faixa atual (fresh, a de hoje)
   if (nova) await redis(['SET', `banda:${leadId}`, nova]);
   else await redis(['DEL', `banda:${leadId}`]);
-  if (!antiga) return;                                    // não estava classificado antes
-  for (const m of ultimosMeses(3)) {
-    for (const st of ['l', 'sql', 'r', 'v', 'd']) {
-      if (await redis(['SISMEMBER', `fx:${st}:${antiga}:${m}`, leadId])) {
-        await redis(['SREM', `fx:${st}:${antiga}:${m}`, leadId]);
-        if (nova) await redis(['SADD', `fx:${st}:${nova}:${m}`, leadId]);
-      }
-    }
-  }
 }
 
 async function redis(cmd) {
@@ -146,15 +127,16 @@ export default async function handler(req, res) {
           await redis(['INCRBYFLOAT', `v:valor:${mes}`, valor]);
           await redis(['INCR', `v:count:${dia}`]);              // diário
           await redis(['INCRBYFLOAT', `v:valor:${dia}`, valor]);
-          const cod = await obterFaixa(deal.lead_id);           // por faixa
-          if (cod) { await redis(['SADD', `fx:v:${cod}:${mes}`, deal.lead_id]); await redis(['INCRBYFLOAT', `fx:vv:${cod}:${mes}`, valor]); }
+          if (deal.lead_id) {                                   // por faixa (resolvida na leitura)
+            await obterFaixa(deal.lead_id);
+            await redis(['HSET', `fxs:v:${mes}`, deal.lead_id, valor]);
+          }
         }
       } else if (deal.funnel_id === F_PREVENDAS) {              // REUNIÃO REALIZADA
         if (await primeiraVez(mes, `reuniao:${deal.id}`)) {
           await redis(['INCR', `r:${mes}`]);
           await redis(['INCR', `r:${dia}`]);
-          const cod = await obterFaixa(deal.lead_id);           // reunião por faixa
-          if (cod) await redis(['SADD', `fx:r:${cod}:${mes}`, deal.lead_id]);
+          if (deal.lead_id) { await obterFaixa(deal.lead_id); await redis(['SADD', `fxs:r:${mes}`, deal.lead_id]); }
         }
       }
     } else if (evento === 'deal.created') {
@@ -164,15 +146,13 @@ export default async function handler(req, res) {
         if (lead.instance_id !== INSTANCIA_POSTO && await primeiraVez(mes, `lead:${deal.id}`)) {
           await redis(['INCR', `l:${mes}`]);
           await redis(['INCR', `l:${dia}`]);
-          const cod = await obterFaixa(deal.lead_id);           // por faixa
-          if (cod) await redis(['SADD', `fx:l:${cod}:${mes}`, deal.lead_id]);
+          if (deal.lead_id) { await obterFaixa(deal.lead_id); await redis(['SADD', `fxs:l:${mes}`, deal.lead_id]); }
         }
       } else if (deal.funnel_id === F_RASTREIO_AGENDAMENTO) {   // OPORTUNIDADE (agendamento)
         if (await primeiraVez(mes, `oport:${deal.id}`)) {
           await redis(['INCR', `o:${mes}`]);
           await redis(['INCR', `o:${dia}`]);
-          const cod = await obterFaixa(deal.lead_id);           // SQL por faixa
-          if (cod) await redis(['SADD', `fx:sql:${cod}:${mes}`, deal.lead_id]);
+          if (deal.lead_id) { await obterFaixa(deal.lead_id); await redis(['SADD', `fxs:sql:${mes}`, deal.lead_id]); }
         }
       } else if (deal.funnel_id === F_RASTREIO_NOSHOW) {        // NO-SHOW
         if (await primeiraVez(mes, `noshow:${deal.id}`)) {
@@ -190,8 +170,7 @@ export default async function handler(req, res) {
         if (await primeiraVez(mes, `desq:${deal.id}`)) {
           await redis(['INCR', `d:${mes}`]);
           await redis(['INCR', `d:${dia}`]);
-          const cod = await obterFaixa(deal.lead_id);           // desq por faixa
-          if (cod) await redis(['SADD', `fx:d:${cod}:${mes}`, deal.lead_id]);
+          if (deal.lead_id) { await obterFaixa(deal.lead_id); await redis(['SADD', `fxs:d:${mes}`, deal.lead_id]); }
         }
       }
     } else if (evento === 'lead.tag_added' || evento === 'lead.tag_removed') {
