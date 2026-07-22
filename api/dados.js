@@ -177,7 +177,7 @@ export default async function handler(req, res) {
   }
 
   const mesAtualStr = `${ano}-${String(agoraBR.getUTCMonth() + 1).padStart(2, '0')}`;
-  const porFaixa = await porFaixaDoMes(mesAtualStr);
+  const porFaixa = await porFaixaDoMes(mesAtualStr).catch(() => []);
 
   res.setHeader('Cache-Control', 's-maxage=55, stale-while-revalidate=30');
   return res.status(200).json({ porMes, idxAuto, series: { vendas: seriesVendas }, rastreioDiarioInicio: RASTREIO_DIARIO_INICIO, porFaixa });

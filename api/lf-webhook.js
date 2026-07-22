@@ -54,6 +54,33 @@ async function obterFaixa(leadId) {
   return cod;
 }
 
+// últimos N meses "YYYY-MM" no fuso BR
+function ultimosMeses(n) {
+  const out = [];
+  const d = new Date(Date.now() - 3 * 3600 * 1000);
+  for (let i = 0; i < n; i++) { out.push(d.toISOString().slice(0, 7)); d.setUTCMonth(d.getUTCMonth() - 1); }
+  return out;
+}
+
+// quando a tag do lead muda: re-consulta a faixa e MOVE o lead entre os conjuntos de faixa
+async function ressincronizarFaixa(leadId) {
+  if (!leadId) return;
+  const nova = await faixaDoLead(leadId);                 // faixa atual (fresh)
+  const antiga = await redis(['GET', `banda:${leadId}`]);
+  if (nova === antiga) return;                            // não mudou → nada a fazer
+  if (nova) await redis(['SET', `banda:${leadId}`, nova]);
+  else await redis(['DEL', `banda:${leadId}`]);
+  if (!antiga) return;                                    // não estava classificado antes
+  for (const m of ultimosMeses(3)) {
+    for (const st of ['l', 'sql', 'r', 'v', 'd']) {
+      if (await redis(['SISMEMBER', `fx:${st}:${antiga}:${m}`, leadId])) {
+        await redis(['SREM', `fx:${st}:${antiga}:${m}`, leadId]);
+        if (nova) await redis(['SADD', `fx:${st}:${nova}:${m}`, leadId]);
+      }
+    }
+  }
+}
+
 async function redis(cmd) {
   const r = await fetch(R_URL, {
     method: 'POST',
@@ -167,6 +194,9 @@ export default async function handler(req, res) {
           if (cod) await redis(['SADD', `fx:d:${cod}:${mes}`, deal.lead_id]);
         }
       }
+    } else if (evento === 'lead.tag_added' || evento === 'lead.tag_removed') {
+      // tag mudou → re-sincroniza a faixa do lead (corrige faixa configurada errada)
+      await ressincronizarFaixa(lead.id);
     }
   } catch (e) {
     console.error('erro no webhook:', e);
