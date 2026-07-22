@@ -107,6 +107,15 @@ export default async function handler(req, res) {
   if (!R_URL || !R_TOKEN) return res.status(500).json({ erro: 'Redis nao configurado' });
 
   const q = req.query || {};
+  // SONDAGEM TEMPORÁRIA: testar se dá pra listar negociações (backfill retroativo). REMOVER depois.
+  if (q.lfpath) {
+    const key = process.env.LEADFORGE_API_KEY || '';
+    const base = 'https://api.leadforge.com.br/api/v1';
+    try {
+      const rr = await fetch(`${base}${q.lfpath}`, { headers: { 'X-API-Key': key } });
+      return res.status(200).json({ status: rr.status, body: await rr.json() });
+    } catch (e) { return res.status(200).json({ erro: String(e) }); }
+  }
   // funil por faixa de um mês específico
   if (q.faixasMes) {
     res.setHeader('Cache-Control', 's-maxage=55, stale-while-revalidate=30');
