@@ -46,10 +46,14 @@ export default async function handler(req, res) {
   const periodo = (q.since && q.until)
     ? `time_range=${encodeURIComponent(JSON.stringify({ since: q.since, until: q.until }))}`
     : `date_preset=${encodeURIComponent(q.preset || 'this_month')}`;
-  const fields = 'campaign_name,spend,impressions,clicks,ctr,cpc,results,cost_per_result,actions';
+  // nível: campanha (padrão), conjunto de anúncios ou anúncio
+  const NIVEIS = { campaign: 'campaign_name', adset: 'adset_name', ad: 'ad_name' };
+  const level = NIVEIS[q.level] ? q.level : 'campaign';
+  const nomeField = NIVEIS[level];
+  const fields = `${nomeField},spend,impressions,clicks,ctr,cpc,results,cost_per_result,actions`;
   const filtering = JSON.stringify([{ field: 'campaign.name', operator: 'CONTAIN', value: PREFIXO }]);
   const url = `https://graph.facebook.com/${API_VER}/act_${AD_ACCOUNT}/insights`
-    + `?level=campaign&${periodo}`
+    + `?level=${level}&${periodo}`
     + `&filtering=${encodeURIComponent(filtering)}`
     + `&fields=${encodeURIComponent(fields)}&limit=500`;
 
@@ -69,7 +73,7 @@ export default async function handler(req, res) {
     const cliques = Math.round(numCru(row.clicks));
     const leads = leadsDaLinha(row);
     return {
-      nome: (row.campaign_name || '').replace(PREFIXO, '').trim(),
+      nome: (row[nomeField] || '').replace(PREFIXO, '').trim(),
       investido, impressoes, cliques, leads,
       ctr: numCru(row.ctr),
       cpl: leads > 0 ? investido / leads : null
@@ -92,5 +96,5 @@ export default async function handler(req, res) {
   };
 
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=300');
-  return res.status(200).json({ periodo, atualizadoEm: new Date().toISOString(), totais, campanhas: ativas });
+  return res.status(200).json({ periodo, nivel: level, atualizadoEm: new Date().toISOString(), totais, campanhas: ativas });
 }

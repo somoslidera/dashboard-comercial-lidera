@@ -217,6 +217,9 @@
   .mkt-rhead,.mkt-rrow{display:grid;grid-template-columns:1.7fr .9fr .6fr .8fr .6fr;gap:8px;align-items:center}
   .mkt-rhead{color:var(--text-3);font-size:clamp(8px,1vh,11px);font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:0 clamp(8px,1vw,14px) 6px;border-bottom:1px solid var(--line)}
   .mkt-rhead .r{text-align:right}
+  .mkt-nivel{margin-left:auto;background:var(--surface);border:1px solid var(--line-strong);color:var(--text);font-family:'Figtree',sans-serif;font-weight:600;font-size:clamp(10px,1.2vh,13px);padding:.3em .55em;border-radius:8px;cursor:pointer;outline:none}
+  .mkt-nivel:hover{border-color:var(--gold)}
+  .mkt-nivel option{background:var(--bg-1);color:var(--text)}
   .mkt-rrow{background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:11px;padding:clamp(7px,1.1vh,13px) clamp(9px,1vw,15px)}
   .mkt-rrow .nome{font-weight:600;font-size:clamp(11px,1.5vh,16px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:9px}
   .mkt-rrow .pos{width:clamp(19px,2.4vh,26px);height:clamp(19px,2.4vh,26px);flex:none;border-radius:7px;display:grid;place-items:center;font-family:'Fraunces',serif;font-weight:700;font-size:clamp(10px,1.3vh,14px);background:rgba(203,167,94,.12);color:var(--gold-soft)}
@@ -390,8 +393,14 @@
       </div>
     </div>
     <div class="card mkt-panel">
-      <h2>Ranking de campanhas <span class="tag">[PLL]</span></h2>
-      <div class="mkt-rhead"><div>Campanha</div><div class="r">Investido</div><div class="r">Leads</div><div class="r">CPL</div><div class="r">CTR</div></div>
+      <h2>Ranking <span class="tag">[PLL]</span>
+        <select id="mktNivel" class="mkt-nivel" aria-label="Nível do ranking">
+          <option value="campaign">Campanhas</option>
+          <option value="adset">Conjuntos</option>
+          <option value="ad">Anúncios</option>
+        </select>
+      </h2>
+      <div class="mkt-rhead"><div id="mkRankCol0">Campanha</div><div class="r">Investido</div><div class="r">Leads</div><div class="r">CPL</div><div class="r">CTR</div></div>
       <div class="mkt-rank" id="mkRank"></div>
     </div>
   </section>
@@ -1514,10 +1523,8 @@ async function carregarMarketing() {
     mS('mkInvest', mBRL0(t.investido)); mS('mkLeads', mN(t.leads)); mS('mkCpl', mBRL(t.cpl)); mS('mkCtr', mP(t.ctr));
     mS('mkInvestSub', mN(cs.length) + ' campanha(s) ativa(s)');
     mS('mkCtrSub', mN(t.cliques) + ' cliques · ' + mN(t.impressoes) + ' impr.');
-    document.getElementById('mkRank').innerHTML = cs.length
-      ? cs.slice(0, 8).map((c, i) => `<div class="mkt-rrow"><div class="nome"><span class="pos">${i + 1}</span><span title="${c.nome}">${c.nome || '—'}</span></div><div class="c muted">${mBRL0(c.investido)}</div><div class="c leads">${mN(c.leads)}</div><div class="c">${c.cpl != null ? mBRL(c.cpl) : '—'}</div><div class="c muted">${mP(c.ctr)}</div></div>`).join('')
-      : '<div class="mkt-aviso">Nenhuma campanha [PLL] com gasto no período.</div>';
     mS('mkStatus', 'Facebook conectado · ' + cs.length + ' campanhas [PLL]');
+    renderRankingMkt(fb);   // ranking no nível escolhido (campanha/conjunto/anúncio)
   } else {
     const motivo = fb && fb.erro === 'sem_token' ? 'Aguardando o token do Facebook no Vercel'
       : (fb && fb.detalhe ? ('Facebook: ' + fb.detalhe) : 'Sem conexão com o Facebook');
@@ -1526,6 +1533,32 @@ async function carregarMarketing() {
     mS('mkStatus', motivo);
   }
   atualizarFunilMkt();
+}
+
+/* ─── Ranking por nível (campanha / conjunto / anúncio) ─── */
+let mktNivel = 'campaign';
+const NOMES_NIVEL = { campaign: 'Campanha', adset: 'Conjunto', ad: 'Anúncio' };
+
+document.getElementById('mktNivel').addEventListener('change', e => {
+  mktNivel = e.target.value;
+  renderRankingMkt(window.ultimoFb);
+});
+
+async function renderRankingMkt(fbCampanha) {
+  const col0 = document.getElementById('mkRankCol0');
+  if (col0) col0.textContent = NOMES_NIVEL[mktNivel] || 'Campanha';
+  let dados = fbCampanha;
+  if (mktNivel !== 'campaign') {   // busca o nível pedido (KPIs continuam por campanha)
+    try {
+      const r = await fetch('/api/facebook?level=' + mktNivel + '&' + mktQuery() + '&t=' + Date.now(), { cache: 'no-store' });
+      if (r.status === 401) { location.href = '/login.html'; return; }
+      dados = await r.json();
+    } catch (e) { dados = null; }
+  }
+  const cs = (dados && dados.campanhas) || [];
+  document.getElementById('mkRank').innerHTML = cs.length
+    ? cs.slice(0, 8).map((c, i) => `<div class="mkt-rrow"><div class="nome"><span class="pos">${i + 1}</span><span title="${c.nome}">${c.nome || '—'}</span></div><div class="c muted">${mBRL0(c.investido)}</div><div class="c leads">${mN(c.leads)}</div><div class="c">${c.cpl != null ? mBRL(c.cpl) : '—'}</div><div class="c muted">${mP(c.ctr)}</div></div>`).join('')
+    : '<div class="mkt-aviso">Nenhum item com gasto no período.</div>';
 }
 
 /* ─── Caixa de período personalizado (compartilhada Comercial/Marketing) ─── */
