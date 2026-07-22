@@ -366,14 +366,7 @@
         </select>
       </div>
       <div class="mes-filtro-wrap">
-        <select class="mes-filtro" id="mktFiltro" aria-label="Período">
-          <option value="this_month">Este mês</option>
-          <option value="last_7d">Últimos 7 dias</option>
-          <option value="last_30d">Últimos 30 dias</option>
-          <option value="last_90d">Últimos 90 dias</option>
-          <option value="maximum">Máximo (tudo)</option>
-          <option value="custom">Personalizado…</option>
-        </select>
+        <select class="mes-filtro" id="mktFiltro" aria-label="Período"></select>
       </div>
     </div>
   </header>
@@ -1173,6 +1166,7 @@ async function carregarDados() {
     if (resp.status === 401) { location.href = '/login.html'; return; }
     const dados = await resp.json();
     window.ultimoDados = dados;
+    popularFiltroMkt();
     if (viewAtiva === 'marketing') atualizarFunilMkt();
     if (dados && dados.porMes && Object.keys(dados.porMes).length) {
       // detecta nova venda no MÊS VIGENTE → celebração (confete + sino)
@@ -1424,32 +1418,63 @@ const mBRL0 = v => v == null ? '—' : v.toLocaleString('pt-BR', { style: 'curre
 const mN = v => v == null ? '—' : v.toLocaleString('pt-BR');
 const mP = v => v == null ? '—' : v.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '%';
 
-/* ─── Período do marketing (preset do Facebook ou datas exatas) ─── */
-let mktPeriodo = { preset: 'this_month' };
+/* ─── Período do marketing: por mês (igual comercial) ou datas exatas ─── */
+let mktPeriodo = { mes: null }; // {mes: idx}  ou  {since, until, label} p/ personalizado
+
+function mesAtualBR() { return new Date(Date.now() - 3 * 3600 * 1000).getUTCMonth(); }
+
+function popularFiltroMkt() {
+  const sel = document.getElementById('mktFiltro');
+  if (!sel) return;
+  const dados = window.ultimoDados;
+  const mesAtual = mesAtualBR();
+  const meses = dados && dados.porMes ? Object.keys(dados.porMes).map(Number) : [];
+  if (!meses.includes(mesAtual)) meses.push(mesAtual);
+  meses.sort((a, b) => a - b);
+  const isCustom = !!mktPeriodo.since;
+  const selMes = mktPeriodo.mes != null ? mktPeriodo.mes : mesAtual;
+  const opMeses = meses.map(i =>
+    `<option value="${i}"${(!isCustom && i === selMes) ? ' selected' : ''}>${MESES[i].charAt(0).toUpperCase() + MESES[i].slice(1)}</option>`).join('');
+  const opCustom = isCustom
+    ? `<option value="custom" selected>Período: ${mktPeriodo.label}</option>`
+    : `<option value="custom">Personalizado…</option>`;
+  sel.innerHTML = opMeses + opCustom;
+}
 
 document.getElementById('mktFiltro').addEventListener('change', e => {
   if (e.target.value === 'custom') { abrirPeriodo('marketing'); return; }
-  mktPeriodo = { preset: e.target.value };
+  mktPeriodo = { mes: parseInt(e.target.value, 10) };
   carregarMarketing();
 });
 
-// meses (índices) cobertos pelo período atual — pro funil do CRM (que é mensal)
+// intervalo de datas (para o Facebook) a partir do período do marketing
+function mktQuery() {
+  const p = mktPeriodo;
+  if (p.since && p.until) return 'since=' + p.since + '&until=' + p.until;
+  const agora = new Date(Date.now() - 3 * 3600 * 1000);
+  const ano = agora.getUTCFullYear();
+  const mes = (p.mes != null) ? p.mes : agora.getUTCMonth();
+  const pad = (n) => String(n).padStart(2, '0');
+  const since = `${ano}-${pad(mes + 1)}-01`;
+  const ultimoDia = new Date(ano, mes + 1, 0).getDate();
+  let until = `${ano}-${pad(mes + 1)}-${pad(ultimoDia)}`;
+  const hoje = agora.toISOString().slice(0, 10);
+  if (until > hoje) until = hoje;
+  return 'since=' + since + '&until=' + until;
+}
+
+// meses (índices) cobertos pelo período — pro funil do CRM (que é mensal)
 function mesesDoPeriodoMkt() {
-  const p = mktPeriodo || { preset: 'this_month' };
-  const hoje = new Date();
-  const anoAtual = hoje.getFullYear();
-  let desde, ate = hoje;
-  if (p.since && p.until) { desde = new Date(p.since + 'T00:00:00'); ate = new Date(p.until + 'T00:00:00'); }
-  else if (p.preset === 'last_7d') desde = new Date(hoje.getTime() - 7 * 864e5);
-  else if (p.preset === 'last_30d') desde = new Date(hoje.getTime() - 30 * 864e5);
-  else if (p.preset === 'last_90d') desde = new Date(hoje.getTime() - 90 * 864e5);
-  else if (p.preset === 'maximum') desde = new Date(anoAtual, 0, 1);
-  else desde = new Date(anoAtual, hoje.getMonth(), 1); // this_month
-  const set = new Set();
-  const cur = new Date(desde.getFullYear(), desde.getMonth(), 1);
-  while (cur <= ate) { if (cur.getFullYear() === anoAtual) set.add(cur.getMonth()); cur.setMonth(cur.getMonth() + 1); }
-  if (!set.size) set.add(hoje.getMonth());
-  return [...set];
+  const p = mktPeriodo;
+  if (p.since && p.until) {
+    const ano = new Date(Date.now() - 3 * 3600 * 1000).getUTCFullYear();
+    const ini = new Date(p.since + 'T00:00:00'), fim = new Date(p.until + 'T00:00:00');
+    const set = new Set();
+    const cur = new Date(ini.getFullYear(), ini.getMonth(), 1);
+    while (cur <= fim) { if (cur.getFullYear() === ano) set.add(cur.getMonth()); cur.setMonth(cur.getMonth() + 1); }
+    return set.size ? [...set] : [mesAtualBR()];
+  }
+  return [(p.mes != null) ? p.mes : mesAtualBR()];
 }
 
 // funil: leads do Facebook + MQL/SQL do CRM (somando os meses do período)
@@ -1468,8 +1493,8 @@ function atualizarFunilMkt() {
 }
 
 async function carregarMarketing() {
-  const p = mktPeriodo || { preset: 'this_month' };
-  const qs = p.since ? ('since=' + p.since + '&until=' + p.until) : ('preset=' + (p.preset || 'this_month'));
+  popularFiltroMkt();
+  const qs = mktQuery();
   let fb = null;
   try {
     const r = await fetch('/api/facebook?' + qs + '&t=' + Date.now(), { cache: 'no-store' });
@@ -1509,8 +1534,7 @@ function abrirPeriodo(ctx) {
 function fecharPeriodo() {
   document.getElementById('periodoPop').hidden = true;
   if (ultimoDados) popularFiltro(ultimoDados);
-  const mf = document.getElementById('mktFiltro');
-  if (mf) mf.value = mktPeriodo.since ? 'custom' : (mktPeriodo.preset || 'this_month');
+  popularFiltroMkt();
 }
 document.getElementById('ppCancelar').addEventListener('click', fecharPeriodo);
 document.getElementById('ppAplicar').addEventListener('click', () => {
