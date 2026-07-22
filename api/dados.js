@@ -6,6 +6,8 @@ import { autorizado } from './_auth.js';
 const R_URL = process.env.KV_REST_API_URL;
 const R_TOKEN = process.env.KV_REST_API_TOKEN;
 const META_PADRAO = 100000;
+// Dados por dia começam a existir a partir daqui (antes disso só temos por mês).
+const RASTREIO_DIARIO_INICIO = '2026-07-22';
 
 async function pipeline(cmds) {
   const r = await fetch(`${R_URL}/pipeline`, {
@@ -17,9 +19,60 @@ async function pipeline(cmds) {
   return j.map((x) => x.result);
 }
 
+// lista os dias "YYYY-MM-DD" de since até until (inclusive), com trava de segurança
+function listarDias(since, until) {
+  const dias = [];
+  let cur = new Date(since + 'T00:00:00Z');
+  const fim = new Date(until + 'T00:00:00Z');
+  let guarda = 0;
+  while (cur <= fim && guarda < 400) { dias.push(cur.toISOString().slice(0, 10)); cur.setUTCDate(cur.getUTCDate() + 1); guarda++; }
+  return dias;
+}
+
+// soma os contadores diários de um intervalo e devolve um período agregado
+async function periodoPorDia(res, since, until) {
+  const dias = listarDias(since, until);
+  const cmds = [];
+  dias.forEach((d) => {
+    cmds.push(['GET', `v:count:${d}`]);
+    cmds.push(['GET', `v:valor:${d}`]);
+    cmds.push(['GET', `r:${d}`]);
+    cmds.push(['GET', `o:${d}`]);
+    cmds.push(['GET', `n:${d}`]);
+    cmds.push(['GET', `l:${d}`]);
+    cmds.push(['GET', `d:${d}`]);
+  });
+  const r = cmds.length ? await pipeline(cmds) : [];
+  let vendas = 0, valor = 0, reunioes = 0, oport = 0, noshow = 0, leads = 0, desq = 0;
+  for (let i = 0; i < dias.length; i++) {
+    const b = i * 7;
+    vendas += parseInt(r[b] || 0, 10) || 0;
+    valor += parseFloat(r[b + 1] || 0) || 0;
+    reunioes += parseInt(r[b + 2] || 0, 10) || 0;
+    oport += parseInt(r[b + 3] || 0, 10) || 0;
+    noshow += parseInt(r[b + 4] || 0, 10) || 0;
+    leads += parseInt(r[b + 5] || 0, 10) || 0;
+    desq += parseInt(r[b + 6] || 0, 10) || 0;
+  }
+  const periodo = {
+    leads, desqualificados: desq, mql: Math.max(0, leads - desq),
+    oportunidades: oport, sql: oport, reunioes, noshow,
+    noShowPct: (reunioes + noshow) > 0 ? (noshow / (reunioes + noshow)) * 100 : null,
+    vendas, valorVendas: valor,
+    conversao: reunioes > 0 ? (vendas / reunioes) * 100 : null,
+    meta: Math.round((dias.length / 30) * META_PADRAO) || META_PADRAO
+  };
+  res.setHeader('Cache-Control', 's-maxage=55, stale-while-revalidate=30');
+  return res.status(200).json({ periodo, since, until, dias: dias.length });
+}
+
 export default async function handler(req, res) {
   if (!autorizado(req)) return res.status(401).json({ erro: 'nao_autorizado' });
   if (!R_URL || !R_TOKEN) return res.status(500).json({ erro: 'Redis nao configurado' });
+
+  // período personalizado por DIA (a partir de RASTREIO_DIARIO_INICIO)
+  const q = req.query || {};
+  if (q.since && q.until) return periodoPorDia(res, q.since, q.until);
 
   const agoraBR = new Date(Date.now() - 3 * 3600 * 1000); // fuso Brasil
   const ano = agoraBR.getUTCFullYear();
@@ -82,5 +135,5 @@ export default async function handler(req, res) {
   }
 
   res.setHeader('Cache-Control', 's-maxage=55, stale-while-revalidate=30');
-  return res.status(200).json({ porMes, idxAuto, series: { vendas: seriesVendas } });
+  return res.status(200).json({ porMes, idxAuto, series: { vendas: seriesVendas }, rastreioDiarioInicio: RASTREIO_DIARIO_INICIO });
 }

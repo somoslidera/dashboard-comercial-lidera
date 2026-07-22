@@ -994,17 +994,20 @@ function animarContagem(el, destino, sufixo = '') {
 }
 
 /* ─── Filtro de mês / período ─── */
-let rangeComercial = null; // {mIni, mFim, label} quando "Personalizado"; null = mês único
+let rangeComercial = null;   // {mIni, mFim} quando "Personalizado" cai no MÊS (histórico)
+let periodoDiario = null;    // {..., since, until} quando "Personalizado" é por DIA (recente)
+let labelPeriodoComercial = '';
 
 function popularFiltro(dados) {
   const sel = document.getElementById('mesFiltro');
   const idxAtual = (mesSelecionado !== null && dados.porMes[mesSelecionado] !== undefined)
     ? mesSelecionado : dados.idxAuto;
+  const emCustom = !!(rangeComercial || periodoDiario);
   const meses = Object.keys(dados.porMes).map(Number).sort((a, b) => a - b)
-    .map(i => `<option value="${i}"${(!rangeComercial && i === idxAtual) ? ' selected' : ''}>${MESES[i].charAt(0).toUpperCase() + MESES[i].slice(1)}</option>`)
+    .map(i => `<option value="${i}"${(!emCustom && i === idxAtual) ? ' selected' : ''}>${MESES[i].charAt(0).toUpperCase() + MESES[i].slice(1)}</option>`)
     .join('');
-  const custom = rangeComercial
-    ? `<option value="custom" selected>Período: ${rangeComercial.label}</option>`
+  const custom = emCustom
+    ? `<option value="custom" selected>Período: ${labelPeriodoComercial}</option>`
     : `<option value="custom">Personalizado…</option>`;
   sel.innerHTML = meses + custom;
 }
@@ -1012,6 +1015,7 @@ function popularFiltro(dados) {
 document.getElementById('mesFiltro').addEventListener('change', e => {
   if (e.target.value === 'custom') { abrirPeriodo('vendas'); return; }
   rangeComercial = null;
+  periodoDiario = null;
   mesSelecionado = parseInt(e.target.value, 10);
   if (ultimoDados) renderizar(ultimoDados);
   atualizarCustosFB();
@@ -1035,6 +1039,7 @@ function agregarMeses(dados, mIni, mFim) {
 
 // intervalo de datas (para o Facebook) equivalente ao período selecionado no comercial
 function periodoComercialFB() {
+  if (periodoDiario && periodoDiario.since) return { since: periodoDiario.since, until: periodoDiario.until };
   const agora = new Date(Date.now() - 3 * 3600 * 1000);
   const ano = agora.getUTCFullYear();
   let mIni, mFim;
@@ -1083,7 +1088,8 @@ function renderizar(dados) {
 
   const idx = (mesSelecionado !== null && dados.porMes[mesSelecionado] !== undefined)
     ? mesSelecionado : dados.idxAuto;
-  const d = rangeComercial ? agregarMeses(dados, rangeComercial.mIni, rangeComercial.mFim) : dados.porMes[idx];
+  const d = periodoDiario ? periodoDiario
+    : (rangeComercial ? agregarMeses(dados, rangeComercial.mIni, rangeComercial.mFim) : dados.porMes[idx]);
 
   // ── Meta de faturamento ──
   const pct = d.meta > 0 ? Math.min((d.valorVendas / d.meta) * 100, 100) : 0;
@@ -1527,7 +1533,7 @@ let periodoCtx = 'vendas';
 function abrirPeriodo(ctx) {
   periodoCtx = ctx;
   document.getElementById('ppHint').textContent = ctx === 'vendas'
-    ? 'O comercial agrupa por mês (as datas viram o intervalo de meses).'
+    ? 'A partir de 22/07 conta por dia; datas anteriores agrupam por mês.'
     : 'Datas exatas das campanhas do Facebook.';
   document.getElementById('periodoPop').hidden = false;
 }
@@ -1537,15 +1543,30 @@ function fecharPeriodo() {
   popularFiltroMkt();
 }
 document.getElementById('ppCancelar').addEventListener('click', fecharPeriodo);
-document.getElementById('ppAplicar').addEventListener('click', () => {
+document.getElementById('ppAplicar').addEventListener('click', async () => {
   let de = document.getElementById('ppDe').value, ate = document.getElementById('ppAte').value;
   if (!de || !ate) return;
   if (de > ate) { const t = de; de = ate; ate = t; }
   document.getElementById('periodoPop').hidden = true;
   const rot = de.slice(8, 10) + '/' + de.slice(5, 7) + ' – ' + ate.slice(8, 10) + '/' + ate.slice(5, 7);
   if (periodoCtx === 'vendas') {
-    rangeComercial = { mIni: parseInt(de.slice(5, 7), 10) - 1, mFim: parseInt(ate.slice(5, 7), 10) - 1, label: rot };
+    labelPeriodoComercial = rot;
     mesSelecionado = null;
+    const inicioDiario = (ultimoDados && ultimoDados.rastreioDiarioInicio) || '2026-07-22';
+    if (de >= inicioDiario) {
+      // período recente → precisão por DIA (soma os contadores diários do intervalo)
+      rangeComercial = null;
+      try {
+        const r = await fetch(`/api/dados?since=${de}&until=${ate}&t=${Date.now()}`, { cache: 'no-store' });
+        if (r.status === 401) { location.href = '/login.html'; return; }
+        const j = await r.json();
+        periodoDiario = j.periodo ? { ...j.periodo, since: de, until: ate } : null;
+      } catch (e) { periodoDiario = null; }
+    } else {
+      // período toca datas antigas (sem detalhe diário) → agrega por MÊS
+      periodoDiario = null;
+      rangeComercial = { mIni: parseInt(de.slice(5, 7), 10) - 1, mFim: parseInt(ate.slice(5, 7), 10) - 1, label: rot };
+    }
     if (ultimoDados) renderizar(ultimoDados);
     atualizarCustosFB();
   } else {

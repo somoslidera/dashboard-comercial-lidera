@@ -33,6 +33,12 @@ function mesBR(iso) {
   const br = new Date(d.getTime() - 3 * 3600 * 1000);
   return br.toISOString().slice(0, 7);
 }
+// Dia no fuso do Brasil (UTC-3) → "YYYY-MM-DD" (registro diário, a partir de jul/2026)
+function diaBR(iso) {
+  const d = iso ? new Date(iso) : new Date();
+  const br = new Date(d.getTime() - 3 * 3600 * 1000);
+  return br.toISOString().slice(0, 10);
+}
 
 // idempotência: SADD retorna 1 se novo, 0 se já processado (evita contar 2x em retries)
 async function primeiraVez(mes, chave) {
@@ -67,35 +73,52 @@ export default async function handler(req, res) {
 
   try {
     if (evento === 'deal.won') {
-      const mes = mesBR(deal.closed_at || deal.updated_at);
+      const iso = deal.closed_at || deal.updated_at;
+      const mes = mesBR(iso), dia = diaBR(iso);
       if (deal.funnel_id === F_VENDAS) {                        // VENDA
         if (await primeiraVez(mes, `venda:${deal.id}`)) {
           const valor = parseFloat(deal.value || '0') || 0;
           await redis(['INCR', `v:count:${mes}`]);
           await redis(['INCRBYFLOAT', `v:valor:${mes}`, valor]);
+          await redis(['INCR', `v:count:${dia}`]);              // diário
+          await redis(['INCRBYFLOAT', `v:valor:${dia}`, valor]);
         }
       } else if (deal.funnel_id === F_PREVENDAS) {              // REUNIÃO REALIZADA
-        if (await primeiraVez(mes, `reuniao:${deal.id}`)) await redis(['INCR', `r:${mes}`]);
+        if (await primeiraVez(mes, `reuniao:${deal.id}`)) {
+          await redis(['INCR', `r:${mes}`]);
+          await redis(['INCR', `r:${dia}`]);
+        }
       }
     } else if (evento === 'deal.created') {
-      const mes = mesBR(deal.created_at);
+      const mes = mesBR(deal.created_at), dia = diaBR(deal.created_at);
       if (deal.funnel_id === F_PREVENDAS) {                     // NOVO LEAD (conta cada deal do Pré Vendas 1x)
         // ignora leads-lixo do posto de saúde (vêm pela instância "API Oficial")
         if (lead.instance_id !== INSTANCIA_POSTO && await primeiraVez(mes, `lead:${deal.id}`)) {
           await redis(['INCR', `l:${mes}`]);
+          await redis(['INCR', `l:${dia}`]);
         }
       } else if (deal.funnel_id === F_RASTREIO_AGENDAMENTO) {   // OPORTUNIDADE (agendamento)
-        if (await primeiraVez(mes, `oport:${deal.id}`)) await redis(['INCR', `o:${mes}`]);
+        if (await primeiraVez(mes, `oport:${deal.id}`)) {
+          await redis(['INCR', `o:${mes}`]);
+          await redis(['INCR', `o:${dia}`]);
+        }
       } else if (deal.funnel_id === F_RASTREIO_NOSHOW) {        // NO-SHOW
-        if (await primeiraVez(mes, `noshow:${deal.id}`)) await redis(['INCR', `n:${mes}`]);
+        if (await primeiraVez(mes, `noshow:${deal.id}`)) {
+          await redis(['INCR', `n:${mes}`]);
+          await redis(['INCR', `n:${dia}`]);
+        }
       }
     } else if (evento === 'deal.closed') {
       // DESQUALIFICAÇÃO no Pré Vendas → tira do MQL (MQL = leads − desqualificados).
       // deal.closed dispara em qualquer encerramento e traz a etapa; só contam LEAD DESQUALIFICADO e PERDA SDR.
       if (deal.funnel_id === F_PREVENDAS &&
           (deal.funnel_stage_id === S_DESQUALIFICADO || deal.funnel_stage_id === S_PERDA_SDR)) {
-        const mes = mesBR(deal.closed_at || deal.updated_at);
-        if (await primeiraVez(mes, `desq:${deal.id}`)) await redis(['INCR', `d:${mes}`]);
+        const iso = deal.closed_at || deal.updated_at;
+        const mes = mesBR(iso), dia = diaBR(iso);
+        if (await primeiraVez(mes, `desq:${deal.id}`)) {
+          await redis(['INCR', `d:${mes}`]);
+          await redis(['INCR', `d:${dia}`]);
+        }
       }
     }
   } catch (e) {
