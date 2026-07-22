@@ -9,6 +9,16 @@ const META_PADRAO = 100000;
 // Dados por dia começam a existir a partir daqui (antes disso só temos por mês).
 const RASTREIO_DIARIO_INICIO = '2026-07-22';
 
+// Faixas de valor (mesma ordem/códigos do webhook)
+const FAIXAS = [
+  { nome: 'Até 50k', cod: 'f1' },
+  { nome: '50k - 80k', cod: 'f2' },
+  { nome: '80k - 100k', cod: 'f3' },
+  { nome: '100k - 150k', cod: 'f4' },
+  { nome: '150k - 300k', cod: 'f5' },
+  { nome: 'Acima 300k', cod: 'f6' }
+];
+
 async function pipeline(cmds) {
   const r = await fetch(`${R_URL}/pipeline`, {
     method: 'POST',
@@ -17,6 +27,30 @@ async function pipeline(cmds) {
   });
   const j = await r.json();
   return j.map((x) => x.result);
+}
+
+// funil segmentado por faixa de valor, de um mês "YYYY-MM"
+async function porFaixaDoMes(mes) {
+  const cmds = [];
+  FAIXAS.forEach((f) => {
+    cmds.push(['SCARD', `fx:l:${f.cod}:${mes}`]);
+    cmds.push(['SCARD', `fx:d:${f.cod}:${mes}`]);
+    cmds.push(['SCARD', `fx:sql:${f.cod}:${mes}`]);
+    cmds.push(['SCARD', `fx:v:${f.cod}:${mes}`]);
+    cmds.push(['GET', `fx:vv:${f.cod}:${mes}`]);
+  });
+  const r = await pipeline(cmds);
+  const out = [];
+  FAIXAS.forEach((f, i) => {
+    const b = i * 5;
+    const leads = parseInt(r[b] || 0, 10) || 0;
+    const desq = parseInt(r[b + 1] || 0, 10) || 0;
+    const sql = parseInt(r[b + 2] || 0, 10) || 0;
+    const vendas = parseInt(r[b + 3] || 0, 10) || 0;
+    const faturamento = parseFloat(r[b + 4] || 0) || 0;
+    out.push({ cod: f.cod, nome: f.nome, leads, mql: Math.max(0, leads - desq), sql, vendas, faturamento });
+  });
+  return out;
 }
 
 // lista os dias "YYYY-MM-DD" de since até until (inclusive), com trava de segurança
@@ -85,6 +119,12 @@ export default async function handler(req, res) {
     return res.status(200).json({ lfprobe: await tentar(url) });
   }
 
+  // funil por faixa de um mês específico
+  if (q.faixasMes) {
+    res.setHeader('Cache-Control', 's-maxage=55, stale-while-revalidate=30');
+    return res.status(200).json({ mes: q.faixasMes, porFaixa: await porFaixaDoMes(q.faixasMes) });
+  }
+
   // período personalizado por DIA (a partir de RASTREIO_DIARIO_INICIO)
   if (q.since && q.until) return periodoPorDia(res, q.since, q.until);
 
@@ -148,6 +188,9 @@ export default async function handler(req, res) {
     idxAuto = chaves.length ? Math.max(...chaves) : agoraBR.getUTCMonth();
   }
 
+  const mesAtualStr = `${ano}-${String(agoraBR.getUTCMonth() + 1).padStart(2, '0')}`;
+  const porFaixa = await porFaixaDoMes(mesAtualStr);
+
   res.setHeader('Cache-Control', 's-maxage=55, stale-while-revalidate=30');
-  return res.status(200).json({ porMes, idxAuto, series: { vendas: seriesVendas }, rastreioDiarioInicio: RASTREIO_DIARIO_INICIO });
+  return res.status(200).json({ porMes, idxAuto, series: { vendas: seriesVendas }, rastreioDiarioInicio: RASTREIO_DIARIO_INICIO, porFaixa });
 }

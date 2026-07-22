@@ -17,6 +17,43 @@ const S_PERDA_SDR      = '7184bfe4-539f-4f9c-b3a4-b59f6a277ee8'; // PERDA SDR   
 // Instância "API Oficial - Lidera" (nº 51 997708817) = leads-lixo do posto de saúde → NÃO contam
 const INSTANCIA_POSTO = '8f8cb4b9-25fd-4f5d-93a1-e7dcf03fa338';
 
+// Faixas de valor (etiquetas do Facebook → tag na negociação). Código curto p/ chaves do Redis.
+const FAIXAS = [
+  { nome: 'Até 50k', cod: 'f1' },
+  { nome: '50k - 80k', cod: 'f2' },
+  { nome: '80k - 100k', cod: 'f3' },
+  { nome: '100k - 150k', cod: 'f4' },
+  { nome: '150k - 300k', cod: 'f5' },
+  { nome: 'Acima 300k', cod: 'f6' }
+];
+
+// Descobre a faixa de um lead consultando as tags das negociações dele na API do LeadForge.
+async function faixaDoLead(leadId) {
+  const key = process.env.LEADFORGE_API_KEY;
+  if (!leadId || !key) return null;
+  try {
+    const r = await fetch(`https://api.leadforge.com.br/api/v1/deals/search?lead_id=${leadId}`, { headers: { 'X-API-Key': key } });
+    const j = await r.json();
+    for (const d of (j && j.deals) || []) {
+      for (const t of (d.tags || [])) {
+        const f = FAIXAS.find((x) => x.nome === (t.name || '').trim());
+        if (f) return f.cod;
+      }
+    }
+  } catch (e) { /* ignora */ }
+  return null;
+}
+
+// obtém a faixa do lead (usa o cache no Redis; se não tiver, consulta a API e guarda)
+async function obterFaixa(leadId) {
+  if (!leadId) return null;
+  const cache = await redis(['GET', `banda:${leadId}`]);
+  if (cache) return cache;
+  const cod = await faixaDoLead(leadId);
+  if (cod) await redis(['SET', `banda:${leadId}`, cod]);
+  return cod;
+}
+
 async function redis(cmd) {
   const r = await fetch(R_URL, {
     method: 'POST',
@@ -88,6 +125,8 @@ export default async function handler(req, res) {
           await redis(['INCRBYFLOAT', `v:valor:${mes}`, valor]);
           await redis(['INCR', `v:count:${dia}`]);              // diário
           await redis(['INCRBYFLOAT', `v:valor:${dia}`, valor]);
+          const cod = await obterFaixa(deal.lead_id);           // por faixa
+          if (cod) { await redis(['SADD', `fx:v:${cod}:${mes}`, deal.lead_id]); await redis(['INCRBYFLOAT', `fx:vv:${cod}:${mes}`, valor]); }
         }
       } else if (deal.funnel_id === F_PREVENDAS) {              // REUNIÃO REALIZADA
         if (await primeiraVez(mes, `reuniao:${deal.id}`)) {
@@ -102,11 +141,15 @@ export default async function handler(req, res) {
         if (lead.instance_id !== INSTANCIA_POSTO && await primeiraVez(mes, `lead:${deal.id}`)) {
           await redis(['INCR', `l:${mes}`]);
           await redis(['INCR', `l:${dia}`]);
+          const cod = await obterFaixa(deal.lead_id);           // por faixa
+          if (cod) await redis(['SADD', `fx:l:${cod}:${mes}`, deal.lead_id]);
         }
       } else if (deal.funnel_id === F_RASTREIO_AGENDAMENTO) {   // OPORTUNIDADE (agendamento)
         if (await primeiraVez(mes, `oport:${deal.id}`)) {
           await redis(['INCR', `o:${mes}`]);
           await redis(['INCR', `o:${dia}`]);
+          const cod = await obterFaixa(deal.lead_id);           // SQL por faixa
+          if (cod) await redis(['SADD', `fx:sql:${cod}:${mes}`, deal.lead_id]);
         }
       } else if (deal.funnel_id === F_RASTREIO_NOSHOW) {        // NO-SHOW
         if (await primeiraVez(mes, `noshow:${deal.id}`)) {
@@ -124,6 +167,8 @@ export default async function handler(req, res) {
         if (await primeiraVez(mes, `desq:${deal.id}`)) {
           await redis(['INCR', `d:${mes}`]);
           await redis(['INCR', `d:${dia}`]);
+          const cod = await obterFaixa(deal.lead_id);           // desq por faixa
+          if (cod) await redis(['SADD', `fx:d:${cod}:${mes}`, deal.lead_id]);
         }
       }
     }
