@@ -108,12 +108,6 @@ export default async function handler(req, res) {
   const deal = (body.data && body.data.deal) || {};
   const lead = (body.data && body.data.lead) || {};
 
-  // SENSOR TEMPORÁRIO: captura o payload completo dos eventos de tag p/ achar a faixa (REMOVER depois)
-  try {
-    await redis(['LPUSH', 'debug:tags', JSON.stringify({ ev: evento, dkeys: Object.keys((body && body.data) || {}), data: (body && body.data) || null })]);
-    await redis(['LTRIM', 'debug:tags', 0, 19]);
-  } catch (e) { /* ignora */ }
-
   try {
     if (evento === 'deal.won') {
       const iso = deal.closed_at || deal.updated_at;
