@@ -71,9 +71,9 @@ export default async function handler(req, res) {
   const deal = (body.data && body.data.deal) || {};
   const lead = (body.data && body.data.lead) || {};
 
-  // SENSOR TEMPORÁRIO: captura tags dos últimos eventos p/ montar o funil por faixa (REMOVER depois)
+  // SENSOR TEMPORÁRIO: captura o payload completo dos eventos de tag p/ achar a faixa (REMOVER depois)
   try {
-    await redis(['LPUSH', 'debug:tags', JSON.stringify({ ev: evento, fn: deal.funnel_id, ltags: lead.tags ?? null, dtags: deal.tags ?? null, chaves_lead: Object.keys(lead), chaves_deal: Object.keys(deal) })]);
+    await redis(['LPUSH', 'debug:tags', JSON.stringify({ ev: evento, dkeys: Object.keys((body && body.data) || {}), data: (body && body.data) || null })]);
     await redis(['LTRIM', 'debug:tags', 0, 19]);
   } catch (e) { /* ignora */ }
 
