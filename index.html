@@ -113,6 +113,9 @@
   .kpi.accent .value{color:var(--teal)}
   .kpi .sub{font-size:clamp(9px,1.15vh,12px);font-weight:600;color:var(--text-3);letter-spacing:.02em}
   .kpi .sub.warn{color:var(--danger)}
+  .kpi .custo{font-family:'Fraunces',serif;font-size:clamp(13px,1.9vh,18px);color:var(--gold-soft);font-variant-numeric:tabular-nums;margin-top:3px;line-height:1;min-height:.9em}
+  .kpi .custo .cl{font-family:'Figtree',sans-serif;font-size:clamp(8px,1.05vh,11px);font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-right:5px}
+  body.ocultar-valores .kpi .custo{display:none}
 
   /* ── META (faturamento) ── */
   .meta-strip{flex:0 0 auto;display:flex;align-items:center;gap:clamp(16px,2.4vw,40px);padding:clamp(13px,2vh,22px) clamp(18px,1.8vw,30px)}
@@ -272,6 +275,7 @@
       <div class="kpi-text">
         <div class="label">Leads no Mês</div>
         <div class="value" id="kpiLeads">0</div>
+        <div class="custo" id="custoLeads"></div>
       </div>
     </div>
     <div class="card kpi">
@@ -282,6 +286,7 @@
         <div class="label">Oportunidades</div>
         <div class="value" id="kpiOportunidades">0</div>
         <div class="sub" id="subOport"></div>
+        <div class="custo" id="custoOport"></div>
       </div>
     </div>
     <div class="card kpi">
@@ -292,6 +297,7 @@
         <div class="label">Reuniões</div>
         <div class="value" id="kpiReunioes">0</div>
         <div class="sub" id="subNoShow"></div>
+        <div class="custo" id="custoReuniao"></div>
       </div>
     </div>
     <div class="card kpi">
@@ -302,6 +308,7 @@
         <div class="label">Vendas Fechadas</div>
         <div class="value" id="kpiVendas">0</div>
         <div class="sub" id="subConversao"></div>
+        <div class="custo" id="custoVenda"></div>
       </div>
     </div>
   </section>
@@ -916,6 +923,9 @@ function desenharMapa(containerId, clientes) {
 /* ─── Formatação de moeda (R$) ─── */
 const fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 function moeda(v) { return fmtBRL.format(Math.round(v || 0)); }
+const fmtCusto = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function custoBRL(v) { return fmtCusto.format(v || 0); }
+let investidoComercial = null; // investido do Facebook no período atual do comercial
 
 /* ─── Gráfico de barras — vendas por mês (só os meses com venda) ─── */
 function desenharBarras(containerId, valores, destaque) {
@@ -1011,6 +1021,7 @@ document.getElementById('mesFiltro').addEventListener('change', e => {
   rangeComercial = null;
   mesSelecionado = parseInt(e.target.value, 10);
   if (ultimoDados) renderizar(ultimoDados);
+  atualizarCustosFB();
 });
 
 // soma os meses [mIni..mFim] num objeto no formato de um mês
@@ -1027,6 +1038,40 @@ function agregarMeses(dados, mIni, mFim) {
   a.conversao = a.reunioes > 0 ? (a.vendas / a.reunioes) * 100 : null;
   if (!a.meta) a.meta = 100000;
   return a;
+}
+
+// intervalo de datas (para o Facebook) equivalente ao período selecionado no comercial
+function periodoComercialFB() {
+  const agora = new Date(Date.now() - 3 * 3600 * 1000);
+  const ano = agora.getUTCFullYear();
+  let mIni, mFim;
+  if (rangeComercial) { mIni = rangeComercial.mIni; mFim = rangeComercial.mFim; }
+  else {
+    const idx = (mesSelecionado !== null && ultimoDados && ultimoDados.porMes[mesSelecionado] !== undefined)
+      ? mesSelecionado : (ultimoDados ? ultimoDados.idxAuto : agora.getUTCMonth());
+    mIni = mFim = idx;
+  }
+  const pad = (n) => String(n).padStart(2, '0');
+  const since = `${ano}-${pad(mIni + 1)}-01`;
+  const ultimoDia = new Date(ano, mFim + 1, 0).getDate();
+  let until = `${ano}-${pad(mFim + 1)}-${pad(ultimoDia)}`;
+  const hoje = agora.toISOString().slice(0, 10);
+  if (since > hoje) return null;      // período no futuro → sem custo
+  if (until > hoje) until = hoje;
+  return { since, until };
+}
+
+// busca o investido do Facebook no período e re-renderiza os custos
+async function atualizarCustosFB() {
+  const p = periodoComercialFB();
+  if (!p) { investidoComercial = null; if (ultimoDados) renderizar(ultimoDados); return; }
+  try {
+    const r = await fetch(`/api/facebook?since=${p.since}&until=${p.until}&t=${Date.now()}`, { cache: 'no-store' });
+    if (r.status === 401) { location.href = '/login.html'; return; }
+    const j = await r.json();
+    investidoComercial = (j && j.totais) ? j.totais.investido : null;
+  } catch (e) { investidoComercial = null; }
+  if (ultimoDados) renderizar(ultimoDados);
 }
 
 /* ─── Botão do olho: esconder/mostrar os valores em R$ ─── */
@@ -1085,6 +1130,14 @@ function renderizar(dados) {
       ? 'Conversão ' + Math.round(d.conversao) + '%'
       : '';
 
+  // ── Custos (investido do Facebook ÷ etapa) ──
+  const inv = investidoComercial;
+  const custoTxt = (v) => (inv != null && v > 0) ? custoBRL(inv / v) : '—';
+  document.getElementById('custoLeads').textContent = custoTxt(d.leads);
+  document.getElementById('custoOport').textContent = custoTxt(d.oportunidades);
+  document.getElementById('custoReuniao').textContent = custoTxt(d.reunioes);
+  document.getElementById('custoVenda').innerHTML = '<span class="cl">CAC</span>' + custoTxt(d.vendas);
+
   // ── Gráfico de vendas por mês ──
   desenharBarras('chartVendas', dados.series.vendas, idx);
 
@@ -1129,6 +1182,7 @@ async function carregarDados() {
       }
       vendasMesAnterior = vendasMesAgora;
       renderizar(dados);
+      atualizarCustosFB();
       dadosReais = true;
     } else if (!dadosReais) {
       renderizar(DADOS_DEMO);
@@ -1469,6 +1523,7 @@ document.getElementById('ppAplicar').addEventListener('click', () => {
     rangeComercial = { mIni: parseInt(de.slice(5, 7), 10) - 1, mFim: parseInt(ate.slice(5, 7), 10) - 1, label: rot };
     mesSelecionado = null;
     if (ultimoDados) renderizar(ultimoDados);
+    atualizarCustosFB();
   } else {
     mktPeriodo = { since: de, until: ate, label: rot };
     carregarMarketing();
