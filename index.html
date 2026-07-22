@@ -221,7 +221,10 @@
   .mkt-nivel:hover{border-color:var(--gold)}
   .mkt-nivel option{background:var(--bg-1);color:var(--text)}
   .mkt-rrow{background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:11px;padding:clamp(7px,1.1vh,13px) clamp(9px,1vw,15px)}
-  .mkt-rrow .nome{font-weight:600;font-size:clamp(11px,1.5vh,16px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:9px}
+  .mkt-rrow .nome{font-weight:600;font-size:clamp(11px,1.5vh,16px);display:flex;align-items:center;gap:9px;min-width:0}
+  .mkt-rrow .nome .nm-txt{min-width:0;display:flex;flex-direction:column;gap:1px}
+  .mkt-rrow .nome .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mkt-rrow .nome .nm-sub{font-size:clamp(9px,1.1vh,12px);font-weight:500;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .mkt-rrow .pos{width:clamp(19px,2.4vh,26px);height:clamp(19px,2.4vh,26px);flex:none;border-radius:7px;display:grid;place-items:center;font-family:'Fraunces',serif;font-weight:700;font-size:clamp(10px,1.3vh,14px);background:rgba(203,167,94,.12);color:var(--gold-soft)}
   .mkt-rrow:first-child .pos{background:linear-gradient(145deg,var(--gold-soft),var(--gold));color:#0A1322}
   .mkt-rrow .c{text-align:right;font-variant-numeric:tabular-nums;font-size:clamp(11px,1.5vh,16px);font-weight:600}
@@ -1557,7 +1560,7 @@ async function renderRankingMkt(fbCampanha) {
   }
   const cs = (dados && dados.campanhas) || [];
   document.getElementById('mkRank').innerHTML = cs.length
-    ? cs.slice(0, 8).map((c, i) => `<div class="mkt-rrow"><div class="nome"><span class="pos">${i + 1}</span><span title="${c.nome}">${c.nome || '—'}</span></div><div class="c muted">${mBRL0(c.investido)}</div><div class="c leads">${mN(c.leads)}</div><div class="c">${c.cpl != null ? mBRL(c.cpl) : '—'}</div><div class="c muted">${mP(c.ctr)}</div></div>`).join('')
+    ? cs.slice(0, 8).map((c, i) => `<div class="mkt-rrow"><div class="nome"><span class="pos">${i + 1}</span><span class="nm-txt"><span class="nm" title="${c.nome}">${c.nome || '—'}</span>${c.sub ? `<span class="nm-sub" title="${c.sub}">${c.sub}</span>` : ''}</span></div><div class="c muted">${mBRL0(c.investido)}</div><div class="c leads">${mN(c.leads)}</div><div class="c">${c.cpl != null ? mBRL(c.cpl) : '—'}</div><div class="c muted">${mP(c.ctr)}</div></div>`).join('')
     : '<div class="mkt-aviso">Nenhum item com gasto no período.</div>';
 }
 

@@ -46,11 +46,18 @@ export default async function handler(req, res) {
   const periodo = (q.since && q.until)
     ? `time_range=${encodeURIComponent(JSON.stringify({ since: q.since, until: q.until }))}`
     : `date_preset=${encodeURIComponent(q.preset || 'this_month')}`;
-  // nível: campanha (padrão), conjunto de anúncios ou anúncio
-  const NIVEIS = { campaign: 'campaign_name', adset: 'adset_name', ad: 'ad_name' };
+  // nível: campanha (padrão), conjunto de anúncios ou anúncio.
+  // sub = nome do "pai" (p/ desambiguar anúncios/conjuntos com nome repetido)
+  const NIVEIS = {
+    campaign: { nome: 'campaign_name', sub: null },
+    adset: { nome: 'adset_name', sub: 'campaign_name' },
+    ad: { nome: 'ad_name', sub: 'adset_name' }
+  };
   const level = NIVEIS[q.level] ? q.level : 'campaign';
-  const nomeField = NIVEIS[level];
-  const fields = `${nomeField},spend,impressions,clicks,ctr,cpc,results,cost_per_result,actions`;
+  const nomeField = NIVEIS[level].nome;
+  const subField = NIVEIS[level].sub;
+  const camposNome = subField ? `${nomeField},${subField}` : nomeField;
+  const fields = `${camposNome},spend,impressions,clicks,ctr,cpc,results,cost_per_result,actions`;
   const filtering = JSON.stringify([{ field: 'campaign.name', operator: 'CONTAIN', value: PREFIXO }]);
   const url = `https://graph.facebook.com/${API_VER}/act_${AD_ACCOUNT}/insights`
     + `?level=${level}&${periodo}`
@@ -74,6 +81,7 @@ export default async function handler(req, res) {
     const leads = leadsDaLinha(row);
     return {
       nome: (row[nomeField] || '').replace(PREFIXO, '').trim(),
+      sub: subField ? (row[subField] || '').replace(PREFIXO, '').trim() : null,
       investido, impressoes, cliques, leads,
       ctr: numCru(row.ctr),
       cpl: leads > 0 ? investido / leads : null
