@@ -70,8 +70,14 @@ export default async function handler(req, res) {
   if (!autorizado(req)) return res.status(401).json({ erro: 'nao_autorizado' });
   if (!R_URL || !R_TOKEN) return res.status(500).json({ erro: 'Redis nao configurado' });
 
-  // período personalizado por DIA (a partir de RASTREIO_DIARIO_INICIO)
   const q = req.query || {};
+  // SENSOR TEMPORÁRIO: lê as tags capturadas (REMOVER depois)
+  if (q.debugtags) {
+    const out = await pipeline([['LRANGE', 'debug:tags', 0, -1]]);
+    return res.status(200).json({ debugtags: (out[0] || []).map((x) => { try { return JSON.parse(x); } catch { return x; } }) });
+  }
+
+  // período personalizado por DIA (a partir de RASTREIO_DIARIO_INICIO)
   if (q.since && q.until) return periodoPorDia(res, q.since, q.until);
 
   const agoraBR = new Date(Date.now() - 3 * 3600 * 1000); // fuso Brasil
