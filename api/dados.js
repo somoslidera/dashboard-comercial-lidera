@@ -36,19 +36,21 @@ async function porFaixaDoMes(mes) {
     cmds.push(['SCARD', `fx:l:${f.cod}:${mes}`]);
     cmds.push(['SCARD', `fx:d:${f.cod}:${mes}`]);
     cmds.push(['SCARD', `fx:sql:${f.cod}:${mes}`]);
+    cmds.push(['SCARD', `fx:r:${f.cod}:${mes}`]);
     cmds.push(['SCARD', `fx:v:${f.cod}:${mes}`]);
     cmds.push(['GET', `fx:vv:${f.cod}:${mes}`]);
   });
   const r = await pipeline(cmds);
   const out = [];
   FAIXAS.forEach((f, i) => {
-    const b = i * 5;
+    const b = i * 6;
     const leads = parseInt(r[b] || 0, 10) || 0;
     const desq = parseInt(r[b + 1] || 0, 10) || 0;
     const sql = parseInt(r[b + 2] || 0, 10) || 0;
-    const vendas = parseInt(r[b + 3] || 0, 10) || 0;
-    const faturamento = parseFloat(r[b + 4] || 0) || 0;
-    out.push({ cod: f.cod, nome: f.nome, leads, mql: Math.max(0, leads - desq), sql, vendas, faturamento });
+    const reunioes = parseInt(r[b + 3] || 0, 10) || 0;
+    const vendas = parseInt(r[b + 4] || 0, 10) || 0;
+    const faturamento = parseFloat(r[b + 5] || 0) || 0;
+    out.push({ cod: f.cod, nome: f.nome, leads, mql: Math.max(0, leads - desq), sql, reunioes, vendas, faturamento });
   });
   return out;
 }

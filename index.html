@@ -200,16 +200,18 @@
   .mkt-panel h2{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(14px,2vh,21px);display:flex;align-items:center;gap:10px;margin-bottom:clamp(10px,1.6vh,20px)}
   .mkt-panel h2 .tag{font-family:'Figtree',sans-serif;font-size:clamp(8px,1vh,11px);font-weight:800;color:var(--gold-soft);background:rgba(203,167,94,.12);padding:3px 9px;border-radius:100px;letter-spacing:.12em}
 
-  .mkt-funil{flex:1;display:flex;flex-direction:column;justify-content:center;gap:clamp(8px,1.4vh,18px)}
-  .mkt-etapa .barra{height:clamp(50px,9vh,100px);border-radius:14px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(16px,1.8vw,32px);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
-  .mkt-etapa .lbl{font-weight:700;font-size:clamp(12px,1.7vh,20px)}
-  .mkt-etapa .lbl small{display:block;font-weight:500;font-size:clamp(9px,1.05vh,12px);opacity:.72;text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
-  .mkt-etapa .n{font-family:'Fraunces',serif;font-weight:700;font-size:clamp(26px,4.6vh,52px);line-height:1}
+  .mkt-funil{flex:1;display:flex;flex-direction:column;justify-content:center;gap:clamp(3px,.7vh,9px)}
+  .mkt-etapa .barra{height:clamp(38px,5.6vh,72px);border-radius:12px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(15px,1.7vw,30px);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+  .mkt-etapa .lbl{font-weight:700;font-size:clamp(11px,1.5vh,18px)}
+  .mkt-etapa .lbl small{display:block;font-weight:500;font-size:clamp(8px,.95vh,11px);opacity:.72;text-transform:uppercase;letter-spacing:.08em;margin-top:1px}
+  .mkt-etapa .n{font-family:'Fraunces',serif;font-weight:700;font-size:clamp(22px,3.8vh,44px);line-height:1}
   .mkt-e1 .barra{background:linear-gradient(100deg,rgba(106,160,245,.30),rgba(106,160,245,.10));border:1px solid rgba(106,160,245,.42)}
   .mkt-e2 .barra{background:linear-gradient(100deg,rgba(203,167,94,.30),rgba(203,167,94,.10));border:1px solid rgba(203,167,94,.44)}
   .mkt-e3 .barra{background:linear-gradient(100deg,rgba(79,209,165,.30),rgba(79,209,165,.10));border:1px solid rgba(79,209,165,.44)}
-  .mkt-e1 .n{color:#bcd9ff}.mkt-e2 .n{color:var(--gold-soft)}.mkt-e3 .n{color:#8ff0cf}
-  .mkt-conv{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--text-2);font-size:clamp(10px,1.3vh,14px);font-weight:600}
+  .mkt-e4 .barra{background:linear-gradient(100deg,rgba(169,139,255,.30),rgba(169,139,255,.10));border:1px solid rgba(169,139,255,.44)}
+  .mkt-e5 .barra{background:linear-gradient(100deg,rgba(232,200,135,.34),rgba(232,200,135,.12));border:1px solid rgba(232,200,135,.5)}
+  .mkt-e1 .n{color:#bcd9ff}.mkt-e2 .n{color:var(--gold-soft)}.mkt-e3 .n{color:#8ff0cf}.mkt-e4 .n{color:#cdbcff}.mkt-e5 .n{color:var(--gold-soft)}
+  .mkt-conv{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--text-2);font-size:clamp(9px,1.2vh,13px);font-weight:600}
   .mkt-conv .pct{color:var(--text);font-weight:800}
   .mkt-conv .arrow{color:var(--gold)}
 
@@ -231,29 +233,6 @@
   .mkt-rrow .c.leads{color:var(--gold-soft);font-family:'Fraunces',serif;font-weight:700}
   .mkt-rrow .c.muted{color:var(--text-2)}
   .mkt-aviso{color:var(--text-2);font-size:clamp(11px,1.4vh,15px);text-align:center;padding:clamp(18px,3vh,44px);line-height:1.6}
-
-  /* ── PAINEL POR FAIXA DE VALOR ── */
-  .fx-wrap{flex:1;display:flex;min-height:0}
-  .fx-card{flex:1;display:flex;flex-direction:column;padding:clamp(16px,2vh,30px) clamp(16px,1.8vw,34px);min-height:0}
-  .fx-head,.fx-row{display:grid;grid-template-columns:1.5fr .8fr .8fr .8fr .8fr 1.15fr .8fr;gap:clamp(6px,.8vw,14px);align-items:center}
-  .fx-head{color:var(--text-3);font-size:clamp(9px,1.15vh,13px);font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:0 clamp(12px,1.4vw,22px) clamp(10px,1.4vh,16px)}
-  .fx-head .r{text-align:right}
-  .fx-body{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;min-height:0}
-  .fx-row{padding:clamp(9px,1.5vh,18px) clamp(12px,1.4vw,22px);border-radius:14px;position:relative;overflow:hidden;background:var(--bg-1);border:1px solid var(--line)}
-  .fx-row .barra{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(203,167,94,.18),rgba(203,167,94,.03));z-index:0;transition:width .8s cubic-bezier(.22,1,.36,1)}
-  .fx-row>*{position:relative;z-index:1}
-  .fx-faixa{display:flex;align-items:center;gap:11px;font-weight:700;font-size:clamp(13px,1.8vh,20px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .fx-dot{width:clamp(9px,1.2vh,13px);height:clamp(9px,1.2vh,13px);border-radius:50%;flex:none}
-  .fx-num{text-align:right;font-variant-numeric:tabular-nums;font-size:clamp(13px,1.8vh,20px);font-weight:600}
-  .fx-num.leads{font-family:'Fraunces',serif;color:var(--gold-soft);font-weight:600}
-  .fx-num.venda{color:var(--teal);font-weight:700}
-  .fx-num.money{font-size:clamp(11px,1.5vh,16px)}
-  .fx-num.muted{color:var(--text-2)}
-  .fx-conv{text-align:right;font-weight:800;font-size:clamp(13px,1.7vh,19px);color:var(--gold-soft)}
-  .fx-row.fx-total{background:transparent;border:none;border-top:1px solid var(--line-strong);border-radius:0;margin-top:2px}
-  .fx-row.fx-total .fx-faixa{color:var(--text-2);text-transform:uppercase;letter-spacing:.08em;font-size:clamp(11px,1.4vh,15px)}
-  .fx-vazio{margin:auto;text-align:center;color:var(--text-2);padding:clamp(20px,5vh,70px);line-height:1.7;font-size:clamp(12px,1.6vh,16px)}
-  .fx-vazio b{color:var(--gold-soft)}
 
   /* ── CAIXA DE PERÍODO PERSONALIZADO ── */
   .periodo-pop{position:fixed;top:clamp(58px,9vh,86px);right:clamp(18px,2vw,34px);z-index:1500;background:linear-gradient(180deg,var(--surface),var(--bg-1));border:1px solid var(--line-strong);border-radius:14px;padding:16px 18px;box-shadow:0 18px 50px rgba(0,0,0,.5);width:min(92vw,340px)}
@@ -288,7 +267,6 @@
         <select class="mes-filtro view-select" aria-label="Escolher painel">
           <option value="vendas">Comercial</option>
           <option value="marketing">Marketing</option>
-          <option value="faixas">Faixas</option>
         </select>
       </div>
       <div class="mes-filtro-wrap">
@@ -393,7 +371,6 @@
         <select class="mes-filtro view-select" aria-label="Escolher painel">
           <option value="vendas">Comercial</option>
           <option value="marketing">Marketing</option>
-          <option value="faixas">Faixas</option>
         </select>
       </div>
       <div class="mes-filtro-wrap">
@@ -411,13 +388,27 @@
 
   <section class="mkt-body">
     <div class="card mkt-panel">
-      <h2>Funil de conversão <span class="tag">LEADS › MQL › SQL</span></h2>
+      <h2>Funil de conversão
+        <select id="mktFaixa" class="mkt-nivel" aria-label="Filtrar por faixa">
+          <option value="">Todas as faixas</option>
+          <option value="f1">Até 50k</option>
+          <option value="f2">50k - 80k</option>
+          <option value="f3">80k - 100k</option>
+          <option value="f4">100k - 150k</option>
+          <option value="f5">150k - 300k</option>
+          <option value="f6">Acima 300k</option>
+        </select>
+      </h2>
       <div class="mkt-funil">
-        <div class="mkt-etapa mkt-e1"><div class="barra"><div class="lbl">Leads gerados<small>Facebook</small></div><div class="n" id="mkfLeads">—</div></div></div>
+        <div class="mkt-etapa mkt-e1"><div class="barra"><div class="lbl">Leads gerados<small id="mkfLeadsSub">Facebook</small></div><div class="n" id="mkfLeads">—</div></div></div>
         <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvMql">—</span> viram MQL</div>
         <div class="mkt-etapa mkt-e2"><div class="barra"><div class="lbl">MQL<small>Leads qualificados · CRM</small></div><div class="n" id="mkfMql">—</div></div></div>
         <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvSql">—</span> viram SQL</div>
         <div class="mkt-etapa mkt-e3"><div class="barra"><div class="lbl">SQL<small>Agendaram reunião · CRM</small></div><div class="n" id="mkfSql">—</div></div></div>
+        <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvReuniao">—</span> compareceram</div>
+        <div class="mkt-etapa mkt-e4"><div class="barra"><div class="lbl">Reuniões<small>Realizadas · CRM</small></div><div class="n" id="mkfReunioes">—</div></div></div>
+        <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvVenda">—</span> fecharam</div>
+        <div class="mkt-etapa mkt-e5"><div class="barra"><div class="lbl">Vendas<small>Fechadas · CRM</small></div><div class="n" id="mkfVendas">—</div></div></div>
       </div>
     </div>
     <div class="card mkt-panel">
@@ -437,43 +428,6 @@
     <span id="mkStatus">Carregando…</span>
     <span>Conta 01 · Mentoria</span>
     <span>Atualização automática a cada 1 minuto</span>
-  </footer>
-</div>
-
-<!-- ══════════════════ PAINEL POR FAIXA DE VALOR ══════════════════ -->
-<div class="dashboard" id="viewFaixas" hidden>
-  <header>
-    <div class="brand-block">
-      <div class="overline">Funil por Faixa de Valor</div>
-      <div class="brand">Lidera <span>Soluções</span></div>
-    </div>
-    <div class="title">Comportamento por Ticket <b>2026</b></div>
-    <div class="header-controls">
-      <div class="mes-filtro-wrap">
-        <select class="mes-filtro view-select" aria-label="Escolher painel">
-          <option value="vendas">Comercial</option>
-          <option value="marketing">Marketing</option>
-          <option value="faixas">Faixas</option>
-        </select>
-      </div>
-      <div class="mes-filtro-wrap"><select class="mes-filtro" id="fxFiltro" aria-label="Mês"></select></div>
-    </div>
-  </header>
-
-  <section class="fx-wrap">
-    <div class="card fx-card">
-      <div class="fx-head">
-        <div>Faixa de valor</div>
-        <div class="r">Leads</div><div class="r">MQL</div><div class="r">SQL</div><div class="r">Vendas</div><div class="r">Faturamento</div><div class="r">Conv.</div>
-      </div>
-      <div class="fx-body" id="fxBody"></div>
-    </div>
-  </section>
-
-  <footer>
-    <span id="fxStatus">—</span>
-    <span>Faixa = etiqueta do formulário do Facebook</span>
-    <span>Coletando a partir de 22/07</span>
   </footer>
 </div>
 
@@ -1474,9 +1428,9 @@ setTimeout(() => { try { btnAtivarSom.focus(); } catch (e) {} }, 120);
 /* ═══════════════════════════════════════════════════════════
    ALTERNÂNCIA VENDAS / MARKETING + PAINEL DE MARKETING
    ═══════════════════════════════════════════════════════════ */
-const VIEWS = { vendas: document.getElementById('viewVendas'), marketing: document.getElementById('viewMarketing'), faixas: document.getElementById('viewFaixas') };
+const VIEWS = { vendas: document.getElementById('viewVendas'), marketing: document.getElementById('viewMarketing') };
 let viewAtiva = localStorage.getItem('viewAtiva') || 'vendas';
-let mktIntervalo = null, fxIntervalo = null;
+let mktIntervalo = null;
 
 function trocarView(v) {
   if (!VIEWS[v]) v = 'vendas';
@@ -1487,10 +1441,6 @@ function trocarView(v) {
   if (v === 'marketing') {
     carregarMarketing();
     if (!mktIntervalo) mktIntervalo = setInterval(carregarMarketing, 60000);
-  }
-  if (v === 'faixas') {
-    carregarFaixas();
-    if (!fxIntervalo) fxIntervalo = setInterval(carregarFaixas, 60000);
   }
 }
 document.querySelectorAll('.view-select').forEach(s => s.addEventListener('change', () => trocarView(s.value)));
@@ -1560,19 +1510,50 @@ function mesesDoPeriodoMkt() {
   return [(p.mes != null) ? p.mes : mesAtualBR()];
 }
 
-// funil: leads do Facebook + MQL/SQL do CRM (somando os meses do período)
-function atualizarFunilMkt() {
+// filtro de faixa do funil ('' = todas; f1..f6)
+let mktFaixa = '';
+document.getElementById('mktFaixa').addEventListener('change', (e) => { mktFaixa = e.target.value; atualizarFunilMkt(); });
+
+// soma o porFaixa (da faixa selecionada) dos meses do período
+async function porFaixaDoPeriodo() {
+  const ano = new Date(Date.now() - 3 * 3600 * 1000).getUTCFullYear();
+  const agg = { leads: 0, mql: 0, sql: 0, reunioes: 0, vendas: 0 };
+  for (const i of mesesDoPeriodoMkt()) {
+    const mesStr = `${ano}-${String(i + 1).padStart(2, '0')}`;
+    try {
+      const r = await fetch('/api/dados?faixasMes=' + mesStr + '&t=' + Date.now(), { cache: 'no-store' });
+      if (r.status === 401) { location.href = '/login.html'; return agg; }
+      const j = await r.json();
+      const row = (j.porFaixa || []).find((f) => f.cod === mktFaixa);
+      if (row) { agg.leads += row.leads; agg.mql += row.mql; agg.sql += row.sql; agg.reunioes += row.reunioes || 0; agg.vendas += row.vendas; }
+    } catch (e) {}
+  }
+  return agg;
+}
+
+// funil: Leads → MQL → SQL → Reuniões → Vendas (Todas as faixas ou uma faixa)
+async function atualizarFunilMkt() {
   const crm = window.ultimoDados, fb = window.ultimoFb;
-  const meses = mesesDoPeriodoMkt();
-  let leadsCrm = 0, mql = 0, sql = 0, temCrm = false;
-  if (crm && crm.porMes) meses.forEach(i => { const m = crm.porMes[i]; if (m) { leadsCrm += m.leads || 0; mql += m.mql || 0; sql += m.sql || 0; temCrm = true; } });
-  const leadsFb = fb && fb.totais ? fb.totais.leads : null;
-  const topo = leadsFb != null ? leadsFb : (temCrm ? leadsCrm : null);
-  mS('mkfLeads', mN(topo));
-  mS('mkfMql', temCrm ? mN(mql) : '—');
-  mS('mkfSql', temCrm ? mN(sql) : '—');
-  mS('mkcvMql', (topo && temCrm) ? mP(mql / topo * 100) : '—');
-  mS('mkcvSql', (temCrm && mql) ? mP(sql / mql * 100) : '—');
+  let leads = null, mql = 0, sql = 0, reunioes = 0, vendas = 0, temDados = false;
+  if (mktFaixa) {                          // uma faixa → tudo do CRM por faixa
+    const a = await porFaixaDoPeriodo();
+    leads = a.leads; mql = a.mql; sql = a.sql; reunioes = a.reunioes; vendas = a.vendas; temDados = true;
+    mS('mkfLeadsSub', 'Faixa · CRM');
+  } else {                                 // todas → topo do Facebook + etapas do CRM
+    let leadsCrm = 0;
+    if (crm && crm.porMes) mesesDoPeriodoMkt().forEach((i) => { const m = crm.porMes[i]; if (m) { leadsCrm += m.leads || 0; mql += m.mql || 0; sql += m.sql || 0; reunioes += m.reunioes || 0; vendas += m.vendas || 0; temDados = true; } });
+    const leadsFb = fb && fb.totais ? fb.totais.leads : null;
+    leads = leadsFb != null ? leadsFb : (temDados ? leadsCrm : null);
+    mS('mkfLeadsSub', 'Facebook');
+  }
+  const val = (v) => temDados && v != null ? mN(v) : '—';
+  mS('mkfLeads', leads != null ? mN(leads) : '—');
+  mS('mkfMql', val(mql)); mS('mkfSql', val(sql)); mS('mkfReunioes', val(reunioes)); mS('mkfVendas', val(vendas));
+  const pc = (a, b) => (a && b != null) ? mP(b / a * 100) : '—';
+  mS('mkcvMql', pc(leads, mql));
+  mS('mkcvSql', pc(mql, sql));
+  mS('mkcvReuniao', pc(sql, reunioes));
+  mS('mkcvVenda', pc(reunioes, vendas));
 }
 
 async function carregarMarketing() {
@@ -1627,74 +1608,6 @@ async function renderRankingMkt(fbCampanha) {
   document.getElementById('mkRank').innerHTML = cs.length
     ? cs.slice(0, 8).map((c, i) => `<div class="mkt-rrow"><div class="nome"><span class="pos">${i + 1}</span><span class="nm-txt"><span class="nm" title="${c.nome}">${c.nome || '—'}</span>${c.sub ? `<span class="nm-sub" title="${c.sub}">${c.sub}</span>` : ''}</span></div><div class="c muted">${mBRL0(c.investido)}</div><div class="c leads">${mN(c.leads)}</div><div class="c">${c.cpl != null ? mBRL(c.cpl) : '—'}</div><div class="c muted">${mP(c.ctr)}</div></div>`).join('')
     : '<div class="mkt-aviso">Nenhum item com gasto no período.</div>';
-}
-
-/* ─── Painel por FAIXA de valor ─── */
-let fxMes = null; // "YYYY-MM"; null = mês atual
-const CORES_FAIXA = { f1: '#e8836b', f2: '#e6a94f', f3: '#eab308', f4: '#8fd14f', f5: '#4fd1a5', f6: '#6aa0f5' };
-
-function popularFiltroFx() {
-  const sel = document.getElementById('fxFiltro');
-  if (!sel) return;
-  const dados = window.ultimoDados;
-  const mesAtual = mesAtualBR();
-  const meses = dados && dados.porMes ? Object.keys(dados.porMes).map(Number) : [];
-  if (!meses.includes(mesAtual)) meses.push(mesAtual);
-  meses.sort((a, b) => a - b);
-  const selMes = fxMes ? parseInt(fxMes.slice(5, 7), 10) - 1 : mesAtual;
-  sel.innerHTML = meses.map(i => `<option value="${i}"${i === selMes ? ' selected' : ''}>${MESES[i].charAt(0).toUpperCase() + MESES[i].slice(1)}</option>`).join('');
-}
-
-document.getElementById('fxFiltro').addEventListener('change', e => {
-  const m = parseInt(e.target.value, 10);
-  const ano = new Date(Date.now() - 3 * 3600 * 1000).getUTCFullYear();
-  fxMes = `${ano}-${String(m + 1).padStart(2, '0')}`;
-  carregarFaixas();
-});
-
-async function carregarFaixas() {
-  popularFiltroFx();
-  const ano = new Date(Date.now() - 3 * 3600 * 1000).getUTCFullYear();
-  const mesUsar = fxMes || `${ano}-${String(mesAtualBR() + 1).padStart(2, '0')}`;
-  let faixas = [];
-  try {
-    const r = await fetch('/api/dados?faixasMes=' + mesUsar + '&t=' + Date.now(), { cache: 'no-store' });
-    if (r.status === 401) { location.href = '/login.html'; return; }
-    const j = await r.json();
-    faixas = j.porFaixa || [];
-  } catch (e) {}
-  renderFaixas(faixas);
-}
-
-function renderFaixas(faixas) {
-  const body = document.getElementById('fxBody');
-  const totalLeads = faixas.reduce((s, f) => s + f.leads, 0);
-  if (!totalLeads) {
-    body.innerHTML = '<div class="fx-vazio">Ainda sem leads por faixa neste mês.<br>Conforme os leads entram <b>com a etiqueta de valor</b>, o funil de cada faixa (Leads → MQL → SQL → Vendas) se preenche aqui.</div>';
-    mS('fxStatus', 'Aguardando leads com faixa');
-    return;
-  }
-  const maxLeads = Math.max(1, ...faixas.map(f => f.leads));
-  const linha = (f) => {
-    const conv = f.leads > 0 ? (f.vendas / f.leads * 100) : null;
-    const w = (f.leads / maxLeads * 100);
-    return `<div class="fx-row"><div class="barra" style="width:${w}%"></div>
-      <div class="fx-faixa"><span class="fx-dot" style="background:${CORES_FAIXA[f.cod] || '#cba75e'}"></span>${f.nome}</div>
-      <div class="fx-num leads">${mN(f.leads)}</div>
-      <div class="fx-num muted">${mN(f.mql)}</div>
-      <div class="fx-num muted">${mN(f.sql)}</div>
-      <div class="fx-num venda">${mN(f.vendas)}</div>
-      <div class="fx-num money muted">${f.faturamento ? mBRL0(f.faturamento) : '—'}</div>
-      <div class="fx-conv">${conv != null ? mP(conv) : '—'}</div></div>`;
-  };
-  const T = faixas.reduce((a, f) => ({ leads: a.leads + f.leads, mql: a.mql + f.mql, sql: a.sql + f.sql, vendas: a.vendas + f.vendas, faturamento: a.faturamento + f.faturamento }), { leads: 0, mql: 0, sql: 0, vendas: 0, faturamento: 0 });
-  const convT = T.leads > 0 ? (T.vendas / T.leads * 100) : null;
-  const total = `<div class="fx-row fx-total"><div class="fx-faixa">Total</div>
-    <div class="fx-num leads">${mN(T.leads)}</div><div class="fx-num muted">${mN(T.mql)}</div><div class="fx-num muted">${mN(T.sql)}</div>
-    <div class="fx-num venda">${mN(T.vendas)}</div><div class="fx-num money muted">${T.faturamento ? mBRL0(T.faturamento) : '—'}</div>
-    <div class="fx-conv">${convT != null ? mP(convT) : '—'}</div></div>`;
-  body.innerHTML = faixas.map(linha).join('') + total;
-  mS('fxStatus', mN(totalLeads) + ' leads com faixa no mês');
 }
 
 /* ─── Caixa de período personalizado (compartilhada Comercial/Marketing) ─── */

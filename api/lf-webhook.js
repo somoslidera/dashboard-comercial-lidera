@@ -126,6 +126,8 @@ export default async function handler(req, res) {
         if (await primeiraVez(mes, `reuniao:${deal.id}`)) {
           await redis(['INCR', `r:${mes}`]);
           await redis(['INCR', `r:${dia}`]);
+          const cod = await obterFaixa(deal.lead_id);           // reunião por faixa
+          if (cod) await redis(['SADD', `fx:r:${cod}:${mes}`, deal.lead_id]);
         }
       }
     } else if (evento === 'deal.created') {
