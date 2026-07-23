@@ -27,39 +27,38 @@ const FAIXAS = [
   { nome: 'Acima 300k', cod: 'f6' }
 ];
 
-// Descobre a faixa de um lead consultando as tags das negociações dele na API do LeadForge.
-async function faixaDoLead(leadId) {
+// Consulta a API do LeadForge: retorna a faixa atual do lead + os ids das NEGOCIAÇÕES dele.
+async function dealsEFaixa(leadId) {
   const key = process.env.LEADFORGE_API_KEY;
-  if (!leadId || !key) return null;
+  if (!leadId || !key) return { cod: null, dealIds: [] };
   try {
     const r = await fetch(`https://api.leadforge.com.br/api/v1/deals/search?lead_id=${leadId}`, { headers: { 'X-API-Key': key } });
     const j = await r.json();
-    for (const d of (j && j.deals) || []) {
-      for (const t of (d.tags || [])) {
-        const f = FAIXAS.find((x) => x.nome === (t.name || '').trim());
-        if (f) return f.cod;
-      }
+    const deals = (j && j.deals) || [];
+    let cod = null;
+    for (const d of deals) {
+      for (const t of (d.tags || [])) { const f = FAIXAS.find((x) => x.nome === (t.name || '').trim()); if (f) { cod = f.cod; break; } }
+      if (cod) break;
     }
-  } catch (e) { /* ignora */ }
-  return null;
+    return { cod, dealIds: deals.map((d) => d.id).filter(Boolean) };
+  } catch (e) { return { cod: null, dealIds: [] }; }
 }
 
-// obtém a faixa do lead (usa o cache no Redis; se não tiver, consulta a API e guarda)
-async function obterFaixa(leadId) {
-  if (!leadId) return null;
-  const cache = await redis(['GET', `banda:${leadId}`]);
-  if (cache) return cache;
-  const cod = await faixaDoLead(leadId);
-  if (cod) await redis(['SET', `banda:${leadId}`, cod]);
-  return cod;
+// marca a faixa de UMA negociação (banda:{deal.id}), consultando a tag atual do lead
+async function marcarFaixaDeal(deal) {
+  if (!deal.id || !deal.lead_id) return;
+  const { cod } = await dealsEFaixa(deal.lead_id);
+  if (cod) await redis(['SET', `banda:${deal.id}`, cod]);
 }
 
-// quando a tag do lead muda: só atualiza a faixa ATUAL do lead (a matriz é resolvida na leitura)
+// tag do lead mudou → atualiza a faixa de TODAS as negociações dele (a matriz é resolvida na leitura)
 async function ressincronizarFaixa(leadId) {
   if (!leadId) return;
-  const nova = await faixaDoLead(leadId);   // faixa atual (fresh, a de hoje)
-  if (nova) await redis(['SET', `banda:${leadId}`, nova]);
-  else await redis(['DEL', `banda:${leadId}`]);
+  const { cod, dealIds } = await dealsEFaixa(leadId);
+  for (const did of dealIds) {
+    if (cod) await redis(['SET', `banda:${did}`, cod]);
+    else await redis(['DEL', `banda:${did}`]);
+  }
 }
 
 async function redis(cmd) {
@@ -127,16 +126,16 @@ export default async function handler(req, res) {
           await redis(['INCRBYFLOAT', `v:valor:${mes}`, valor]);
           await redis(['INCR', `v:count:${dia}`]);              // diário
           await redis(['INCRBYFLOAT', `v:valor:${dia}`, valor]);
-          if (deal.lead_id) {                                   // por faixa (resolvida na leitura)
-            await obterFaixa(deal.lead_id);
-            await redis(['HSET', `fxs:v:${mes}`, deal.lead_id, valor]);
+          if (deal.id) {                                        // por faixa (negociação; resolvida na leitura)
+            await marcarFaixaDeal(deal);
+            await redis(['HSET', `fxs:v:${mes}`, deal.id, valor]);
           }
         }
       } else if (deal.funnel_id === F_PREVENDAS) {              // REUNIÃO REALIZADA
         if (await primeiraVez(mes, `reuniao:${deal.id}`)) {
           await redis(['INCR', `r:${mes}`]);
           await redis(['INCR', `r:${dia}`]);
-          if (deal.lead_id) { await obterFaixa(deal.lead_id); await redis(['SADD', `fxs:r:${mes}`, deal.lead_id]); }
+          if (deal.id) { await marcarFaixaDeal(deal); await redis(['SADD', `fxs:r:${mes}`, deal.id]); }
         }
       }
     } else if (evento === 'deal.created') {
@@ -146,13 +145,13 @@ export default async function handler(req, res) {
         if (lead.instance_id !== INSTANCIA_POSTO && await primeiraVez(mes, `lead:${deal.id}`)) {
           await redis(['INCR', `l:${mes}`]);
           await redis(['INCR', `l:${dia}`]);
-          if (deal.lead_id) { await obterFaixa(deal.lead_id); await redis(['SADD', `fxs:l:${mes}`, deal.lead_id]); }
+          if (deal.id) { await marcarFaixaDeal(deal); await redis(['SADD', `fxs:l:${mes}`, deal.id]); }
         }
       } else if (deal.funnel_id === F_RASTREIO_AGENDAMENTO) {   // OPORTUNIDADE (agendamento)
         if (await primeiraVez(mes, `oport:${deal.id}`)) {
           await redis(['INCR', `o:${mes}`]);
           await redis(['INCR', `o:${dia}`]);
-          if (deal.lead_id) { await obterFaixa(deal.lead_id); await redis(['SADD', `fxs:sql:${mes}`, deal.lead_id]); }
+          if (deal.id) { await marcarFaixaDeal(deal); await redis(['SADD', `fxs:sql:${mes}`, deal.id]); }
         }
       } else if (deal.funnel_id === F_RASTREIO_NOSHOW) {        // NO-SHOW
         if (await primeiraVez(mes, `noshow:${deal.id}`)) {
@@ -170,7 +169,7 @@ export default async function handler(req, res) {
         if (await primeiraVez(mes, `desq:${deal.id}`)) {
           await redis(['INCR', `d:${mes}`]);
           await redis(['INCR', `d:${dia}`]);
-          if (deal.lead_id) { await obterFaixa(deal.lead_id); await redis(['SADD', `fxs:d:${mes}`, deal.lead_id]); }
+          if (deal.id) { await marcarFaixaDeal(deal); await redis(['SADD', `fxs:d:${mes}`, deal.id]); }
         }
       }
     } else if (evento === 'lead.tag_added' || evento === 'lead.tag_removed') {
