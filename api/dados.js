@@ -29,6 +29,18 @@ async function pipeline(cmds) {
   return j.map((x) => x.result);
 }
 
+// busca ao vivo a faixa atual de um lead na API do LeadForge (timing-proof)
+async function faixaViaAPI(leadId) {
+  const key = process.env.LEADFORGE_API_KEY;
+  if (!leadId || !key) return null;
+  try {
+    const r = await fetch(`https://api.leadforge.com.br/api/v1/deals/search?lead_id=${leadId}`, { headers: { 'X-API-Key': key } });
+    const j = await r.json();
+    for (const d of (j && j.deals) || []) for (const t of (d.tags || [])) { const f = FAIXAS.find((x) => x.nome === (t.name || '').trim()); if (f) return f.cod; }
+  } catch (e) { /* ignora */ }
+  return null;
+}
+
 // funil por faixa de um mês "YYYY-MM".
 // Guardamos só QUEM passou em cada etapa; a FAIXA é resolvida agora (leitura),
 // olhando a tag ATUAL de cada lead (`banda:{lead_id}`) — então reflete sempre a tag de hoje.
@@ -51,6 +63,19 @@ async function porFaixaDoMes(mes) {
   const bandas = ids.length ? await pipeline(ids.map((id) => ['GET', `banda:${id}`])) : [];
   const faixaDe = {};
   ids.forEach((id, i) => { faixaDe[id] = bandas[i]; });
+
+  // negociações ainda SEM faixa → resolve ao vivo (a tag pode ter entrado após a captura) e cacheia
+  const semFaixa = ids.filter((id) => !faixaDe[id]).slice(0, 40);
+  if (semFaixa.length) {
+    const leads = await pipeline(semFaixa.map((id) => ['GET', `dl:${id}`]));
+    const resolvidos = await Promise.all(semFaixa.map(async (did, i) => {
+      const lid = leads[i]; if (!lid) return null;
+      const cod = await faixaViaAPI(lid); return cod ? { did, cod } : null;
+    }));
+    const sets = [];
+    resolvidos.forEach((r) => { if (r) { faixaDe[r.did] = r.cod; sets.push(['SET', `banda:${r.did}`, r.cod]); } });
+    if (sets.length) await pipeline(sets);
+  }
 
   const acc = {};
   FAIXAS.forEach((f) => { acc[f.cod] = { cod: f.cod, nome: f.nome, leads: 0, desq: 0, sql: 0, reunioes: 0, vendas: 0, faturamento: 0 }; });

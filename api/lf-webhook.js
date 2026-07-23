@@ -44,11 +44,16 @@ async function dealsEFaixa(leadId) {
   } catch (e) { return { cod: null, dealIds: [] }; }
 }
 
-// marca a faixa de UMA negociação (banda:{deal.id}), consultando a tag atual do lead
+// marca a faixa de UMA negociação (banda:{deal.id}) + guarda o mapa negociação→lead
+// (p/ a leitura conseguir re-resolver a faixa depois, caso a tag entre após a captura)
 async function marcarFaixaDeal(deal) {
   if (!deal.id || !deal.lead_id) return;
-  const { cod } = await dealsEFaixa(deal.lead_id);
-  if (cod) await redis(['SET', `banda:${deal.id}`, cod]);
+  await redis(['SET', `dl:${deal.id}`, deal.lead_id]);
+  const { cod, dealIds } = await dealsEFaixa(deal.lead_id);
+  if (cod) {
+    const alvos = dealIds.includes(deal.id) ? dealIds : dealIds.concat(deal.id);
+    for (const did of alvos) await redis(['SET', `banda:${did}`, cod]);
+  }
 }
 
 // tag do lead mudou → atualiza a faixa de TODAS as negociações dele (a matriz é resolvida na leitura)
