@@ -129,12 +129,20 @@ export default async function handler(req, res) {
     const ids = (r[0] || []).slice(0, 15);
     const bandas = ids.length ? await pipeline(ids.map((id) => ['GET', `banda:${id}`])) : [];
     const amostra = ids.map((id, i) => ({ deal: id, banda: bandas[i] }));
+    // teste vivo da API do LeadForge (lead conhecido: Mara, faixa 80k-100k)
+    const key = process.env.LEADFORGE_API_KEY || '';
+    let apiTeste;
+    try {
+      const rr = await fetch('https://api.leadforge.com.br/api/v1/deals/search?lead_id=17bc63ba-769d-45a5-8f2e-de4d0a766e48', { headers: { 'X-API-Key': key } });
+      const jj = await rr.json();
+      apiTeste = { temApiKey: !!key, status: rr.status, tags: (jj.deals || []).flatMap((d) => (d.tags || []).map((t) => t.name)) };
+    } catch (e) { apiTeste = { temApiKey: !!key, erro: String(e) }; }
     return res.status(200).json({
       mes,
       negociacoes_leads: (r[0] || []).length,
       negociacoes_sql: r[1], negociacoes_reunioes: r[2], negociacoes_desq: r[3], negociacoes_vendas: r[4],
       classificados_na_amostra: amostra.filter((x) => x.banda).length + '/' + amostra.length,
-      amostra
+      amostra, apiTeste
     });
   }
 
