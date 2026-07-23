@@ -119,6 +119,25 @@ export default async function handler(req, res) {
     return res.status(200).json({ mes: q.faixasMes, porFaixa: await porFaixaDoMes(q.faixasMes) });
   }
 
+  // DIAGNÓSTICO TEMPORÁRIO da captura por faixa (protegido por login). REMOVER depois.
+  if (q.fxdebug) {
+    const now = new Date(Date.now() - 3 * 3600 * 1000);
+    const mes = (typeof q.fxdebug === 'string' && q.fxdebug.includes('-')) ? q.fxdebug : `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+    const r = await pipeline([
+      ['SMEMBERS', `fxs:l:${mes}`], ['SCARD', `fxs:sql:${mes}`], ['SCARD', `fxs:r:${mes}`], ['SCARD', `fxs:d:${mes}`], ['HLEN', `fxs:v:${mes}`]
+    ]);
+    const ids = (r[0] || []).slice(0, 15);
+    const bandas = ids.length ? await pipeline(ids.map((id) => ['GET', `banda:${id}`])) : [];
+    const amostra = ids.map((id, i) => ({ deal: id, banda: bandas[i] }));
+    return res.status(200).json({
+      mes,
+      negociacoes_leads: (r[0] || []).length,
+      negociacoes_sql: r[1], negociacoes_reunioes: r[2], negociacoes_desq: r[3], negociacoes_vendas: r[4],
+      classificados_na_amostra: amostra.filter((x) => x.banda).length + '/' + amostra.length,
+      amostra
+    });
+  }
+
   // período personalizado por DIA (a partir de RASTREIO_DIARIO_INICIO)
   if (q.since && q.until) return periodoPorDia(res, q.since, q.until);
 
