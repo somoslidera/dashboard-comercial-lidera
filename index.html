@@ -200,18 +200,21 @@
   .mkt-panel h2{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(14px,2vh,21px);display:flex;align-items:center;gap:10px;margin-bottom:clamp(10px,1.6vh,20px)}
   .mkt-panel h2 .tag{font-family:'Figtree',sans-serif;font-size:clamp(8px,1vh,11px);font-weight:800;color:var(--gold-soft);background:rgba(203,167,94,.12);padding:3px 9px;border-radius:100px;letter-spacing:.12em}
 
-  .mkt-funil{flex:1;display:flex;flex-direction:column;justify-content:center;gap:clamp(3px,.7vh,9px)}
-  .mkt-etapa .barra{height:clamp(38px,5.6vh,72px);border-radius:12px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(15px,1.7vw,30px);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
-  .mkt-etapa .lbl{font-weight:700;font-size:clamp(11px,1.5vh,18px)}
-  .mkt-etapa .lbl small{display:block;font-weight:500;font-size:clamp(8px,.95vh,11px);opacity:.72;text-transform:uppercase;letter-spacing:.08em;margin-top:1px}
-  .mkt-etapa .n{font-family:'Fraunces',serif;font-weight:700;font-size:clamp(22px,3.8vh,44px);line-height:1}
+  .mkt-funil{flex:1;display:flex;flex-direction:column;justify-content:center;gap:clamp(2px,.5vh,7px)}
+  .mkt-etapa .barra{height:clamp(34px,4.8vh,62px);border-radius:11px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(14px,1.6vw,28px);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+  .mkt-etapa .lbl{font-weight:700;font-size:clamp(11px,1.45vh,17px)}
+  .mkt-etapa .lbl small{display:block;font-weight:500;font-size:clamp(8px,.9vh,11px);opacity:.72;text-transform:uppercase;letter-spacing:.07em;margin-top:1px}
+  .mkt-nc{display:flex;flex-direction:column;align-items:flex-end;line-height:1}
+  .mkt-etapa .n{font-family:'Fraunces',serif;font-weight:700;font-size:clamp(20px,3.4vh,40px);line-height:1}
+  .mkt-custo{font-family:'Figtree',sans-serif;font-weight:800;font-size:clamp(8px,1vh,12px);color:var(--gold);letter-spacing:.02em;margin-top:2px}
   .mkt-e1 .barra{background:linear-gradient(100deg,rgba(106,160,245,.30),rgba(106,160,245,.10));border:1px solid rgba(106,160,245,.42)}
   .mkt-e2 .barra{background:linear-gradient(100deg,rgba(203,167,94,.30),rgba(203,167,94,.10));border:1px solid rgba(203,167,94,.44)}
   .mkt-e3 .barra{background:linear-gradient(100deg,rgba(79,209,165,.30),rgba(79,209,165,.10));border:1px solid rgba(79,209,165,.44)}
-  .mkt-e4 .barra{background:linear-gradient(100deg,rgba(169,139,255,.30),rgba(169,139,255,.10));border:1px solid rgba(169,139,255,.44)}
-  .mkt-e5 .barra{background:linear-gradient(100deg,rgba(232,200,135,.34),rgba(232,200,135,.12));border:1px solid rgba(232,200,135,.5)}
-  .mkt-e1 .n{color:#bcd9ff}.mkt-e2 .n{color:var(--gold-soft)}.mkt-e3 .n{color:#8ff0cf}.mkt-e4 .n{color:#cdbcff}.mkt-e5 .n{color:var(--gold-soft)}
-  .mkt-conv{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--text-2);font-size:clamp(9px,1.2vh,13px);font-weight:600}
+  .mkt-e4 .barra{background:linear-gradient(100deg,rgba(90,169,255,.26),rgba(90,169,255,.08));border:1px solid rgba(90,169,255,.4)}
+  .mkt-e5 .barra{background:linear-gradient(100deg,rgba(169,139,255,.30),rgba(169,139,255,.10));border:1px solid rgba(169,139,255,.44)}
+  .mkt-e6 .barra{background:linear-gradient(100deg,rgba(232,200,135,.34),rgba(232,200,135,.12));border:1px solid rgba(232,200,135,.5)}
+  .mkt-e1 .n{color:#bcd9ff}.mkt-e2 .n{color:var(--gold-soft)}.mkt-e3 .n{color:#8ff0cf}.mkt-e4 .n{color:#bcd9ff}.mkt-e5 .n{color:#cdbcff}.mkt-e6 .n{color:var(--gold-soft)}
+  .mkt-conv{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--text-2);font-size:clamp(9px,1.15vh,13px);font-weight:600}
   .mkt-conv .pct{color:var(--text);font-weight:800}
   .mkt-conv .arrow{color:var(--gold)}
 
@@ -400,15 +403,17 @@
         </select>
       </h2>
       <div class="mkt-funil">
-        <div class="mkt-etapa mkt-e1"><div class="barra"><div class="lbl">Leads gerados<small id="mkfLeadsSub">Facebook</small></div><div class="n" id="mkfLeads">—</div></div></div>
+        <div class="mkt-etapa mkt-e1"><div class="barra"><div class="lbl">Leads gerados<small>CRM</small></div><div class="mkt-nc"><div class="n" id="mkfLeads">—</div><div class="mkt-custo" id="mkcLeads"></div></div></div></div>
         <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvMql">—</span> viram MQL</div>
-        <div class="mkt-etapa mkt-e2"><div class="barra"><div class="lbl">MQL<small>Leads qualificados · CRM</small></div><div class="n" id="mkfMql">—</div></div></div>
-        <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvSql">—</span> viram SQL</div>
-        <div class="mkt-etapa mkt-e3"><div class="barra"><div class="lbl">SQL<small>Agendaram reunião · CRM</small></div><div class="n" id="mkfSql">—</div></div></div>
+        <div class="mkt-etapa mkt-e2"><div class="barra"><div class="lbl">MQL<small>Leads qualificados · CRM</small></div><div class="mkt-nc"><div class="n" id="mkfMql">—</div><div class="mkt-custo" id="mkcMql"></div></div></div></div>
+        <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvSql">—</span> com valor ≥ 50k</div>
+        <div class="mkt-etapa mkt-e3"><div class="barra"><div class="lbl">SQL<small>Valor ≥ 50k · CRM</small></div><div class="mkt-nc"><div class="n" id="mkfSql">—</div><div class="mkt-custo" id="mkcSql"></div></div></div></div>
+        <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvAgend">—</span> agendaram</div>
+        <div class="mkt-etapa mkt-e4"><div class="barra"><div class="lbl">Reuniões agendadas<small>N2 · CRM</small></div><div class="mkt-nc"><div class="n" id="mkfAgend">—</div><div class="mkt-custo" id="mkcAgend"></div></div></div></div>
         <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvReuniao">—</span> compareceram</div>
-        <div class="mkt-etapa mkt-e4"><div class="barra"><div class="lbl">Reuniões<small>Realizadas · CRM</small></div><div class="n" id="mkfReunioes">—</div></div></div>
+        <div class="mkt-etapa mkt-e5"><div class="barra"><div class="lbl">Reuniões<small>Realizadas · CRM</small></div><div class="mkt-nc"><div class="n" id="mkfReunioes">—</div><div class="mkt-custo" id="mkcReunioes"></div></div></div></div>
         <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvVenda">—</span> fecharam</div>
-        <div class="mkt-etapa mkt-e5"><div class="barra"><div class="lbl">Vendas<small>Fechadas · CRM</small></div><div class="n" id="mkfVendas">—</div></div></div>
+        <div class="mkt-etapa mkt-e6"><div class="barra"><div class="lbl">Vendas<small>Fechadas · CRM</small></div><div class="mkt-nc"><div class="n" id="mkfVendas">—</div><div class="mkt-custo" id="mkcVendas"></div></div></div></div>
       </div>
     </div>
     <div class="card mkt-panel">
@@ -1514,45 +1519,47 @@ function mesesDoPeriodoMkt() {
 let mktFaixa = '';
 document.getElementById('mktFaixa').addEventListener('change', (e) => { mktFaixa = e.target.value; atualizarFunilMkt(); });
 
-// soma o porFaixa (da faixa selecionada) dos meses do período
+// soma o porFaixa (TODAS as faixas) dos meses do período → { f1:{...}, f2:{...}, ... }
 async function porFaixaDoPeriodo() {
   const ano = new Date(Date.now() - 3 * 3600 * 1000).getUTCFullYear();
-  const agg = { leads: 0, mql: 0, sql: 0, reunioes: 0, vendas: 0 };
+  const acc = {};
+  ['f1', 'f2', 'f3', 'f4', 'f5', 'f6'].forEach((c) => acc[c] = { leads: 0, mql: 0, sql: 0, reunioes: 0, vendas: 0, faturamento: 0 });
   for (const i of mesesDoPeriodoMkt()) {
     const mesStr = `${ano}-${String(i + 1).padStart(2, '0')}`;
     try {
       const r = await fetch('/api/dados?faixasMes=' + mesStr + '&t=' + Date.now(), { cache: 'no-store' });
-      if (r.status === 401) { location.href = '/login.html'; return agg; }
+      if (r.status === 401) { location.href = '/login.html'; return acc; }
       const j = await r.json();
-      const row = (j.porFaixa || []).find((f) => f.cod === mktFaixa);
-      if (row) { agg.leads += row.leads; agg.mql += row.mql; agg.sql += row.sql; agg.reunioes += row.reunioes || 0; agg.vendas += row.vendas; }
+      (j.porFaixa || []).forEach((f) => { const a = acc[f.cod]; if (a) { a.leads += f.leads || 0; a.mql += f.mql || 0; a.sql += f.sql || 0; a.reunioes += f.reunioes || 0; a.vendas += f.vendas || 0; a.faturamento += f.faturamento || 0; } });
     } catch (e) {}
   }
-  return agg;
+  return acc;
 }
 
-// funil: Leads → MQL → SQL → Reuniões → Vendas (Todas as faixas ou uma faixa)
+// funil: Leads(CRM) → MQL → SQL(≥50k) → Reuniões agendadas → Reuniões → Vendas, com custo (investido ÷ etapa)
 async function atualizarFunilMkt() {
   const crm = window.ultimoDados, fb = window.ultimoFb;
-  let leads = null, mql = 0, sql = 0, reunioes = 0, vendas = 0, temDados = false;
-  if (mktFaixa) {                          // uma faixa → tudo do CRM por faixa
-    const a = await porFaixaDoPeriodo();
-    leads = a.leads; mql = a.mql; sql = a.sql; reunioes = a.reunioes; vendas = a.vendas; temDados = true;
-    mS('mkfLeadsSub', 'Faixa · CRM');
-  } else {                                 // todas → topo do Facebook + etapas do CRM
-    let leadsCrm = 0;
-    if (crm && crm.porMes) mesesDoPeriodoMkt().forEach((i) => { const m = crm.porMes[i]; if (m) { leadsCrm += m.leads || 0; mql += m.mql || 0; sql += m.sql || 0; reunioes += m.reunioes || 0; vendas += m.vendas || 0; temDados = true; } });
-    const leadsFb = fb && fb.totais ? fb.totais.leads : null;
-    leads = leadsFb != null ? leadsFb : (temDados ? leadsCrm : null);
-    mS('mkfLeadsSub', 'Facebook');
+  const pf = await porFaixaDoPeriodo();               // por faixa (p/ SQL ≥50k)
+  let leads = 0, mql = 0, sql = 0, agend = 0, reunioes = 0, vendas = 0, temDados = false;
+  if (mktFaixa) {                                     // uma faixa
+    const a = pf[mktFaixa] || {};
+    leads = a.leads || 0; mql = a.mql || 0; agend = a.sql || 0; reunioes = a.reunioes || 0; vendas = a.vendas || 0;
+    sql = (mktFaixa !== 'f1') ? (a.leads || 0) : 0;   // ≥50k
+    temDados = true;
+  } else {                                            // todas as faixas
+    if (crm && crm.porMes) mesesDoPeriodoMkt().forEach((i) => { const m = crm.porMes[i]; if (m) { leads += m.leads || 0; mql += m.mql || 0; agend += m.oportunidades || 0; reunioes += m.reunioes || 0; vendas += m.vendas || 0; temDados = true; } });
+    sql = ['f2', 'f3', 'f4', 'f5', 'f6'].reduce((s, c) => s + (pf[c] ? pf[c].leads : 0), 0);  // leads com etiqueta ≥ 50k
   }
+  const inv = fb && fb.totais ? fb.totais.investido : null;
   const val = (v) => temDados && v != null ? mN(v) : '—';
-  mS('mkfLeads', leads != null ? mN(leads) : '—');
-  mS('mkfMql', val(mql)); mS('mkfSql', val(sql)); mS('mkfReunioes', val(reunioes)); mS('mkfVendas', val(vendas));
+  const custo = (id, c) => mS(id, inv == null ? '' : (c > 0 ? mBRL(inv / c) : '—'));
+  mS('mkfLeads', val(leads)); mS('mkfMql', val(mql)); mS('mkfSql', val(sql)); mS('mkfAgend', val(agend)); mS('mkfReunioes', val(reunioes)); mS('mkfVendas', val(vendas));
+  custo('mkcLeads', leads); custo('mkcMql', mql); custo('mkcSql', sql); custo('mkcAgend', agend); custo('mkcReunioes', reunioes); custo('mkcVendas', vendas);
   const pc = (a, b) => (a && b != null) ? mP(b / a * 100) : '—';
   mS('mkcvMql', pc(leads, mql));
   mS('mkcvSql', pc(mql, sql));
-  mS('mkcvReuniao', pc(sql, reunioes));
+  mS('mkcvAgend', pc(sql, agend));
+  mS('mkcvReuniao', pc(agend, reunioes));
   mS('mkcvVenda', pc(reunioes, vendas));
 }
 
