@@ -409,7 +409,7 @@
         <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvSql">—</span> com valor ≥ 50k</div>
         <div class="mkt-etapa mkt-e3"><div class="barra"><div class="lbl">SQL<small>Valor ≥ 50k · CRM</small></div><div class="mkt-nc"><div class="n" id="mkfSql">—</div><div class="mkt-custo" id="mkcSql"></div></div></div></div>
         <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvAgend">—</span> agendaram</div>
-        <div class="mkt-etapa mkt-e4"><div class="barra"><div class="lbl">Reuniões agendadas<small>N2 · CRM</small></div><div class="mkt-nc"><div class="n" id="mkfAgend">—</div><div class="mkt-custo" id="mkcAgend"></div></div></div></div>
+        <div class="mkt-etapa mkt-e4"><div class="barra"><div class="lbl">Reuniões agendadas<small>CRM</small></div><div class="mkt-nc"><div class="n" id="mkfAgend">—</div><div class="mkt-custo" id="mkcAgend"></div></div></div></div>
         <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvReuniao">—</span> compareceram</div>
         <div class="mkt-etapa mkt-e5"><div class="barra"><div class="lbl">Reuniões<small>Realizadas · CRM</small></div><div class="mkt-nc"><div class="n" id="mkfReunioes">—</div><div class="mkt-custo" id="mkcReunioes"></div></div></div></div>
         <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvVenda">—</span> fecharam</div>
@@ -1556,9 +1556,9 @@ async function atualizarFunilMkt() {
   mS('mkfLeads', val(leads)); mS('mkfMql', val(mql)); mS('mkfSql', val(sql)); mS('mkfAgend', val(agend)); mS('mkfReunioes', val(reunioes)); mS('mkfVendas', val(vendas));
   custo('mkcLeads', leads); custo('mkcMql', mql); custo('mkcSql', sql); custo('mkcAgend', agend); custo('mkcReunioes', reunioes); custo('mkcVendas', vendas);
   const pc = (a, b) => (a && b != null) ? mP(b / a * 100) : '—';
-  mS('mkcvMql', pc(leads, mql));
-  mS('mkcvSql', pc(mql, sql));
-  mS('mkcvAgend', pc(sql, agend));
+  mS('mkcvMql', pc(leads, mql));       // % sobre Leads gerados
+  mS('mkcvSql', pc(leads, sql));       // % sobre Leads gerados
+  mS('mkcvAgend', pc(leads, agend));   // % sobre Leads gerados
   mS('mkcvReuniao', pc(agend, reunioes));
   mS('mkcvVenda', pc(reunioes, vendas));
 }
