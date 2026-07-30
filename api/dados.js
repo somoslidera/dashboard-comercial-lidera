@@ -138,6 +138,25 @@ export default async function handler(req, res) {
   if (!R_URL || !R_TOKEN) return res.status(500).json({ erro: 'Redis nao configurado' });
 
   const q = req.query || {};
+
+  // SONDA TEMPORÁRIA: achar como ler as anotações (atribuição do anúncio) de um lead. REMOVER depois.
+  // Uso: /api/dados?notesprobe=NOME_DO_LEAD  (logado)
+  if (q.notesprobe) {
+    const key = process.env.LEADFORGE_API_KEY || '';
+    const base = 'https://api.leadforge.com.br/api/v1';
+    const call = async (path) => { try { const r = await fetch(base + path, { headers: { 'X-API-Key': key } }); return { path, status: r.status, body: await r.json() }; } catch (e) { return { path, erro: String(e) }; } };
+    const busca = await call(`/leads/search?name=${encodeURIComponent(q.notesprobe)}`);
+    const lead = ((busca.body && busca.body.leads) || [])[0];
+    const leadId = lead && lead.id;
+    let deals = [];
+    if (leadId) { const d = await call(`/deals/search?lead_id=${leadId}`); deals = (d.body && d.body.deals) || []; }
+    const dealId = deals[0] && deals[0].id;
+    const tenta = {};
+    if (leadId) { tenta.lead_notes = await call(`/leads/${leadId}/notes`); tenta.notes_por_lead = await call(`/notes?lead_id=${leadId}`); }
+    if (dealId) { tenta.deal_notes = await call(`/deals/${dealId}/notes`); tenta.notes_por_deal = await call(`/notes?deal_id=${dealId}`); }
+    return res.status(200).json({ leadId, dealId, notes_count: deals.map((d) => d.notes_count), tenta });
+  }
+
   // funil por faixa de um mês específico
   if (q.faixasMes) {
     res.setHeader('Cache-Control', 's-maxage=55, stale-while-revalidate=30');
