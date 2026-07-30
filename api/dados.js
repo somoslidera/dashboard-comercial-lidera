@@ -151,10 +151,11 @@ export default async function handler(req, res) {
     let deals = [];
     if (leadId) { const d = await call(`/deals/search?lead_id=${leadId}`); deals = (d.body && d.body.deals) || []; }
     const dealId = deals[0] && deals[0].id;
-    const tenta = {};
-    if (leadId) { tenta.lead_notes = await call(`/leads/${leadId}/notes`); tenta.notes_por_lead = await call(`/notes?lead_id=${leadId}`); }
-    if (dealId) { tenta.deal_notes = await call(`/deals/${dealId}/notes`); tenta.notes_por_deal = await call(`/notes?deal_id=${dealId}`); }
-    return res.status(200).json({ leadId, dealId, notes_count: deals.map((d) => d.notes_count), tenta });
+    return res.status(200).json({
+      lead_completo: lead || null,
+      negociacao_chaves: deals[0] ? Object.keys(deals[0]) : null,
+      negociacao_completa: deals[0] || null
+    });
   }
 
   // funil por faixa de um mês específico
