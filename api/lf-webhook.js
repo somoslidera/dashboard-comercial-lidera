@@ -120,6 +120,14 @@ export default async function handler(req, res) {
   const deal = (body.data && body.data.deal) || {};
   const lead = (body.data && body.data.lead) || {};
 
+  // SENSOR TEMP: captura a atribuição (ad_id) dos eventos p/ segmentar o funil por anúncio. REMOVER depois.
+  try {
+    const d = (body && body.data) || {};
+    const extra = { ...d }; delete extra.deal; delete extra.lead;
+    await redis(['LPUSH', 'debug:attr', JSON.stringify({ ev: evento, dkeys: Object.keys(d), extra })]);
+    await redis(['LTRIM', 'debug:attr', 0, 24]);
+  } catch (e) { /* ignora */ }
+
   try {
     if (evento === 'deal.won') {
       const iso = deal.closed_at || deal.updated_at;

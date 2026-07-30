@@ -139,6 +139,12 @@ export default async function handler(req, res) {
 
   const q = req.query || {};
 
+  // LEITOR TEMPORÁRIO do sensor de atribuição. REMOVER depois.
+  if (q.attrdebug) {
+    const out = await pipeline([['LRANGE', 'debug:attr', 0, -1]]);
+    return res.status(200).json({ attr: (out[0] || []).map((x) => { try { return JSON.parse(x); } catch { return x; } }) });
+  }
+
   // SONDA TEMPORÁRIA: achar como ler as anotações (atribuição do anúncio) de um lead. REMOVER depois.
   // Uso: /api/dados?notesprobe=NOME_DO_LEAD  (logado)
   if (q.notesprobe) {
