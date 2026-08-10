@@ -219,7 +219,7 @@
   .mkt-conv .arrow{color:var(--gold)}
 
   .mkt-rank{flex:1;display:flex;flex-direction:column;gap:clamp(4px,.7vh,9px);overflow:hidden;min-height:0}
-  .mkt-rhead,.mkt-rrow{display:grid;grid-template-columns:1.7fr .9fr .6fr .8fr .6fr;gap:8px;align-items:center}
+  .mkt-rhead,.mkt-rrow{display:grid;grid-template-columns:1.5fr .85fr .5fr .7fr .55fr .85fr;gap:8px;align-items:center}
   .mkt-rhead{color:var(--text-3);font-size:clamp(8px,1vh,11px);font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:0 clamp(8px,1vw,14px) 6px;border-bottom:1px solid var(--line)}
   .mkt-rhead .r{text-align:right}
   .mkt-nivel{margin-left:auto;background:var(--surface);border:1px solid var(--line-strong);color:var(--text);font-family:'Figtree',sans-serif;font-weight:600;font-size:clamp(10px,1.2vh,13px);padding:.3em .55em;border-radius:8px;cursor:pointer;outline:none}
@@ -424,7 +424,7 @@
           <option value="ad">Anúncios</option>
         </select>
       </h2>
-      <div class="mkt-rhead"><div id="mkRankCol0">Campanha</div><div class="r">Investido</div><div class="r">Leads</div><div class="r">CPL</div><div class="r">CTR</div></div>
+      <div class="mkt-rhead"><div id="mkRankCol0">Campanha</div><div class="r">Investido</div><div class="r">Leads</div><div class="r">Reuniões</div><div class="r">Vendas</div><div class="r">R$/Venda</div></div>
       <div class="mkt-rank" id="mkRank"></div>
     </div>
   </section>
@@ -1600,6 +1600,57 @@ document.getElementById('mktNivel').addEventListener('change', e => {
   renderRankingMkt(window.ultimoFb);
 });
 
+// ── Resultados do CRM por anúncio (ads_id) → cruzados no ranking ──
+// soma o porAnuncio dos meses do período: { adsId: { leads, reunioes, vendas, ... } }
+let crmAdCache = { key: null, val: null };
+async function porAnuncioDoPeriodo() {
+  const key = mktQuery();
+  if (crmAdCache.key === key && crmAdCache.val) return crmAdCache.val;
+  const ano = new Date(Date.now() - 3 * 3600 * 1000).getUTCFullYear();
+  const acc = {};
+  for (const i of mesesDoPeriodoMkt()) {
+    const mesStr = `${ano}-${String(i + 1).padStart(2, '0')}`;
+    try {
+      const r = await fetch('/api/dados?anunciosMes=' + mesStr + '&t=' + Date.now(), { cache: 'no-store' });
+      if (r.status === 401) { location.href = '/login.html'; return acc; }
+      const pa = (await r.json()).porAnuncio || {};
+      Object.keys(pa).forEach((ad) => {
+        const a = acc[ad] || (acc[ad] = { leads: 0, mql: 0, sql: 0, reunioes: 0, vendas: 0, faturamento: 0 });
+        const o = pa[ad];
+        a.leads += o.leads || 0; a.mql += o.mql || 0; a.sql += o.sql || 0; a.reunioes += o.reunioes || 0; a.vendas += o.vendas || 0; a.faturamento += o.faturamento || 0;
+      });
+    } catch (e) {}
+  }
+  crmAdCache = { key, val: acc };
+  return acc;
+}
+// mapa anúncio → { conjuntoId, campanhaId } (p/ somar os resultados do CRM em conjunto/campanha)
+let mapaAdCache = { key: null, val: null };
+async function mapaAnuncios() {
+  const key = mktQuery();
+  if (mapaAdCache.key === key && mapaAdCache.val) return mapaAdCache.val;
+  const m = {};
+  try {
+    const r = await fetch('/api/facebook?level=ad&' + mktQuery() + '&t=' + Date.now(), { cache: 'no-store' });
+    const j = await r.json();
+    (j.campanhas || []).forEach((c) => { if (c.id) m[c.id] = { conjuntoId: c.conjuntoId, campanhaId: c.campanhaId }; });
+  } catch (e) {}
+  mapaAdCache = { key, val: m };
+  return m;
+}
+// agrega os resultados do CRM (por anúncio) no nível pedido → { idNoNivel: {...} }
+function crmNoNivel(nivel, crm, mapa) {
+  const acc = {};
+  Object.keys(crm).forEach((ad) => {
+    const id = nivel === 'ad' ? ad : nivel === 'adset' ? (mapa[ad] || {}).conjuntoId : (mapa[ad] || {}).campanhaId;
+    if (!id) return;
+    const a = acc[id] || (acc[id] = { leads: 0, reunioes: 0, vendas: 0, faturamento: 0 });
+    const o = crm[ad];
+    a.leads += o.leads || 0; a.reunioes += o.reunioes || 0; a.vendas += o.vendas || 0; a.faturamento += o.faturamento || 0;
+  });
+  return acc;
+}
+
 async function renderRankingMkt(fbCampanha) {
   const col0 = document.getElementById('mkRankCol0');
   if (col0) col0.textContent = NOMES_NIVEL[mktNivel] || 'Campanha';
@@ -1612,8 +1663,24 @@ async function renderRankingMkt(fbCampanha) {
     } catch (e) { dados = null; }
   }
   const cs = (dados && dados.campanhas) || [];
+  // cruza os resultados do CRM (reuniões/vendas) por anúncio, agregados no nível atual
+  let crmNivel = {};
+  try {
+    const [crm, mapa] = await Promise.all([porAnuncioDoPeriodo(), mapaAnuncios()]);
+    crmNivel = crmNoNivel(mktNivel, crm, mapa);
+  } catch (e) {}
   document.getElementById('mkRank').innerHTML = cs.length
-    ? cs.slice(0, 8).map((c, i) => `<div class="mkt-rrow"><div class="nome"><span class="pos">${i + 1}</span><span class="nm-txt"><span class="nm" title="${c.nome}">${c.nome || '—'}</span>${c.sub ? `<span class="nm-sub" title="${c.sub}">${c.sub}</span>` : ''}</span></div><div class="c muted">${mBRL0(c.investido)}</div><div class="c leads">${mN(c.leads)}</div><div class="c">${c.cpl != null ? mBRL(c.cpl) : '—'}</div><div class="c muted">${mP(c.ctr)}</div></div>`).join('')
+    ? cs.slice(0, 8).map((c, i) => {
+        const o = crmNivel[c.id] || {};
+        const reun = o.reunioes || 0, vend = o.vendas || 0;
+        const custoV = (c.investido > 0 && vend > 0) ? mBRL0(c.investido / vend) : '—';
+        return `<div class="mkt-rrow"><div class="nome"><span class="pos">${i + 1}</span><span class="nm-txt"><span class="nm" title="${c.nome}">${c.nome || '—'}</span>${c.sub ? `<span class="nm-sub" title="${c.sub}">${c.sub}</span>` : ''}</span></div>`
+          + `<div class="c muted">${mBRL0(c.investido)}</div>`
+          + `<div class="c leads">${mN(c.leads)}</div>`
+          + `<div class="c">${mN(reun)}</div>`
+          + `<div class="c">${mN(vend)}</div>`
+          + `<div class="c muted">${custoV}</div></div>`;
+      }).join('')
     : '<div class="mkt-aviso">Nenhum item com gasto no período.</div>';
 }
 

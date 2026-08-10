@@ -86,6 +86,41 @@ async function porFaixaDoMes(mes) {
   return FAIXAS.map((f) => { const a = acc[f.cod]; return { cod: a.cod, nome: a.nome, leads: a.leads, mql: Math.max(0, a.leads - a.desq), sql: a.sql, reunioes: a.reunioes, vendas: a.vendas, faturamento: a.faturamento }; });
 }
 
+// funil por ANÚNCIO (ads_id) de um mês "YYYY-MM": mesmas etapas, agrupadas por ad:{deal.id}.
+// O ads_id é o id do anúncio no Facebook (custom_fields.ads_id do lead, capturado no webhook).
+// Devolve { [adsId]: { leads, mql, sql, reunioes, vendas, faturamento } }. Forward-only.
+async function porAnuncioDoMes(mes) {
+  const base = await pipeline([
+    ['SMEMBERS', `fxs:l:${mes}`],
+    ['SMEMBERS', `fxs:sql:${mes}`],
+    ['SMEMBERS', `fxs:r:${mes}`],
+    ['SMEMBERS', `fxs:d:${mes}`],
+    ['HGETALL', `fxs:v:${mes}`]
+  ]);
+  const setL = base[0] || [], setSql = base[1] || [], setR = base[2] || [], setD = base[3] || [];
+  const vRaw = base[4] || [];
+  const vendaMap = {};
+  if (Array.isArray(vRaw)) { for (let i = 0; i < vRaw.length; i += 2) vendaMap[vRaw[i]] = parseFloat(vRaw[i + 1]) || 0; }
+  else Object.keys(vRaw).forEach((k) => { vendaMap[k] = parseFloat(vRaw[k]) || 0; });
+  const setV = Object.keys(vendaMap);
+
+  const ids = [...new Set([].concat(setL, setSql, setR, setD, setV))];
+  if (!ids.length) return {};
+  const ads = await pipeline(ids.map((id) => ['GET', `ad:${id}`]));
+  const adDe = {};
+  ids.forEach((id, i) => { adDe[id] = ads[i]; });
+
+  const acc = {};
+  const bucket = (a) => (acc[a] || (acc[a] = { leads: 0, desq: 0, sql: 0, reunioes: 0, vendas: 0, faturamento: 0 }));
+  const contar = (set, campo) => set.forEach((id) => { const a = adDe[id]; if (a) bucket(a)[campo]++; });
+  contar(setL, 'leads'); contar(setSql, 'sql'); contar(setR, 'reunioes'); contar(setD, 'desq');
+  setV.forEach((id) => { const a = adDe[id]; if (a) { const b = bucket(a); b.vendas++; b.faturamento += vendaMap[id]; } });
+
+  const out = {};
+  Object.keys(acc).forEach((a) => { const x = acc[a]; out[a] = { leads: x.leads, mql: Math.max(0, x.leads - x.desq), sql: x.sql, reunioes: x.reunioes, vendas: x.vendas, faturamento: x.faturamento }; });
+  return out;
+}
+
 // lista os dias "YYYY-MM-DD" de since até until (inclusive), com trava de segurança
 function listarDias(since, until) {
   const dias = [];
@@ -139,35 +174,16 @@ export default async function handler(req, res) {
 
   const q = req.query || {};
 
-  // LEITOR TEMPORÁRIO do sensor de atribuição. REMOVER depois.
-  if (q.attrdebug) {
-    const out = await pipeline([['LRANGE', 'debug:attr', 0, -1]]);
-    return res.status(200).json({ attr: (out[0] || []).map((x) => { try { return JSON.parse(x); } catch { return x; } }) });
-  }
-
-  // SONDA TEMPORÁRIA: achar como ler as anotações (atribuição do anúncio) de um lead. REMOVER depois.
-  // Uso: /api/dados?notesprobe=NOME_DO_LEAD  (logado)
-  if (q.notesprobe) {
-    const key = process.env.LEADFORGE_API_KEY || '';
-    const base = 'https://api.leadforge.com.br/api/v1';
-    const call = async (path) => { try { const r = await fetch(base + path, { headers: { 'X-API-Key': key } }); return { path, status: r.status, body: await r.json() }; } catch (e) { return { path, erro: String(e) }; } };
-    const busca = await call(`/leads/search?name=${encodeURIComponent(q.notesprobe)}`);
-    const lead = ((busca.body && busca.body.leads) || [])[0];
-    const leadId = lead && lead.id;
-    let deals = [];
-    if (leadId) { const d = await call(`/deals/search?lead_id=${leadId}`); deals = (d.body && d.body.deals) || []; }
-    const dealId = deals[0] && deals[0].id;
-    return res.status(200).json({
-      lead_completo: lead || null,
-      negociacao_chaves: deals[0] ? Object.keys(deals[0]) : null,
-      negociacao_completa: deals[0] || null
-    });
-  }
-
   // funil por faixa de um mês específico
   if (q.faixasMes) {
     res.setHeader('Cache-Control', 's-maxage=55, stale-while-revalidate=30');
     return res.status(200).json({ mes: q.faixasMes, porFaixa: await porFaixaDoMes(q.faixasMes) });
+  }
+
+  // funil por anúncio (ads_id) de um mês específico
+  if (q.anunciosMes) {
+    res.setHeader('Cache-Control', 's-maxage=55, stale-while-revalidate=30');
+    return res.status(200).json({ mes: q.anunciosMes, porAnuncio: await porAnuncioDoMes(q.anunciosMes) });
   }
 
   // período personalizado por DIA (a partir de RASTREIO_DIARIO_INICIO)

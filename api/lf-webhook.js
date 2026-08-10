@@ -66,6 +66,37 @@ async function ressincronizarFaixa(leadId) {
   }
 }
 
+// ── Atribuição por anúncio ──────────────────────────────────────────────────
+// O Ads ID mora no campo personalizado do LEAD (custom_fields.ads_id).
+// Tenta pegar direto do payload; se não vier, busca na API por nome e casa pelo id.
+async function adsIdDoLead(lead) {
+  const direto = lead && lead.custom_fields && lead.custom_fields.ads_id;
+  if (direto) return String(direto);
+  const key = process.env.LEADFORGE_API_KEY;
+  if (!lead || !lead.id || !lead.full_name || !key) return null;
+  try {
+    const r = await fetch(`https://api.leadforge.com.br/api/v1/leads/search?name=${encodeURIComponent(lead.full_name)}`, { headers: { 'X-API-Key': key } });
+    const j = await r.json();
+    const achado = ((j && j.leads) || []).find((l) => l.id === lead.id);
+    const v = achado && achado.custom_fields && achado.custom_fields.ads_id;
+    return v ? String(v) : null;
+  } catch (e) { return null; }
+}
+// marca o anúncio de UMA negociação: ad:{deal.id} = ads_id
+async function marcarAnuncioDeal(deal, lead) {
+  if (!deal || !deal.id) return;
+  const adsId = await adsIdDoLead(lead);
+  if (adsId) await redis(['SET', `ad:${deal.id}`, adsId]);
+}
+// tag mudou / lead atualizado → propaga o ads_id p/ TODAS as negociações do lead
+async function ressincronizarAnuncio(lead) {
+  if (!lead || !lead.id) return;
+  const adsId = await adsIdDoLead(lead);
+  if (!adsId) return;
+  const { dealIds } = await dealsEFaixa(lead.id);
+  for (const did of dealIds) await redis(['SET', `ad:${did}`, adsId]);
+}
+
 async function redis(cmd) {
   const r = await fetch(R_URL, {
     method: 'POST',
@@ -120,14 +151,6 @@ export default async function handler(req, res) {
   const deal = (body.data && body.data.deal) || {};
   const lead = (body.data && body.data.lead) || {};
 
-  // SENSOR TEMP: captura a atribuição (ad_id) dos eventos p/ segmentar o funil por anúncio. REMOVER depois.
-  try {
-    const d = (body && body.data) || {};
-    const extra = { ...d }; delete extra.deal; delete extra.lead;
-    await redis(['LPUSH', 'debug:attr', JSON.stringify({ ev: evento, dkeys: Object.keys(d), extra })]);
-    await redis(['LTRIM', 'debug:attr', 0, 24]);
-  } catch (e) { /* ignora */ }
-
   try {
     if (evento === 'deal.won') {
       const iso = deal.closed_at || deal.updated_at;
@@ -141,6 +164,7 @@ export default async function handler(req, res) {
           await redis(['INCRBYFLOAT', `v:valor:${dia}`, valor]);
           if (deal.id) {                                        // por faixa (negociação; resolvida na leitura)
             await marcarFaixaDeal(deal);
+            await marcarAnuncioDeal(deal, lead);
             await redis(['HSET', `fxs:v:${mes}`, deal.id, valor]);
           }
         }
@@ -148,7 +172,7 @@ export default async function handler(req, res) {
         if (await primeiraVez(mes, `reuniao:${deal.id}`)) {
           await redis(['INCR', `r:${mes}`]);
           await redis(['INCR', `r:${dia}`]);
-          if (deal.id) { await marcarFaixaDeal(deal); await redis(['SADD', `fxs:r:${mes}`, deal.id]); }
+          if (deal.id) { await marcarFaixaDeal(deal); await marcarAnuncioDeal(deal, lead); await redis(['SADD', `fxs:r:${mes}`, deal.id]); }
         }
       }
     } else if (evento === 'deal.created') {
@@ -158,13 +182,13 @@ export default async function handler(req, res) {
         if (lead.instance_id !== INSTANCIA_POSTO && await primeiraVez(mes, `lead:${deal.id}`)) {
           await redis(['INCR', `l:${mes}`]);
           await redis(['INCR', `l:${dia}`]);
-          if (deal.id) { await marcarFaixaDeal(deal); await redis(['SADD', `fxs:l:${mes}`, deal.id]); }
+          if (deal.id) { await marcarFaixaDeal(deal); await marcarAnuncioDeal(deal, lead); await redis(['SADD', `fxs:l:${mes}`, deal.id]); }
         }
       } else if (deal.funnel_id === F_RASTREIO_AGENDAMENTO) {   // OPORTUNIDADE (agendamento)
         if (await primeiraVez(mes, `oport:${deal.id}`)) {
           await redis(['INCR', `o:${mes}`]);
           await redis(['INCR', `o:${dia}`]);
-          if (deal.id) { await marcarFaixaDeal(deal); await redis(['SADD', `fxs:sql:${mes}`, deal.id]); }
+          if (deal.id) { await marcarFaixaDeal(deal); await marcarAnuncioDeal(deal, lead); await redis(['SADD', `fxs:sql:${mes}`, deal.id]); }
         }
       } else if (deal.funnel_id === F_RASTREIO_NOSHOW) {        // NO-SHOW
         if (await primeiraVez(mes, `noshow:${deal.id}`)) {
@@ -182,12 +206,13 @@ export default async function handler(req, res) {
         if (await primeiraVez(mes, `desq:${deal.id}`)) {
           await redis(['INCR', `d:${mes}`]);
           await redis(['INCR', `d:${dia}`]);
-          if (deal.id) { await marcarFaixaDeal(deal); await redis(['SADD', `fxs:d:${mes}`, deal.id]); }
+          if (deal.id) { await marcarFaixaDeal(deal); await marcarAnuncioDeal(deal, lead); await redis(['SADD', `fxs:d:${mes}`, deal.id]); }
         }
       }
     } else if (evento === 'lead.tag_added' || evento === 'lead.tag_removed') {
       // tag mudou → re-sincroniza a faixa do lead (corrige faixa configurada errada)
       await ressincronizarFaixa(lead.id);
+      await ressincronizarAnuncio(lead);   // aproveita p/ propagar o ads_id às negociações
     }
   } catch (e) {
     console.error('erro no webhook:', e);
