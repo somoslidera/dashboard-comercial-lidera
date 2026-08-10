@@ -418,7 +418,10 @@
     </div>
     <div class="card mkt-panel">
       <h2>Ranking <span class="tag">[PLL]</span>
-        <select id="mktNivel" class="mkt-nivel" aria-label="Nível do ranking">
+        <select id="mktCampanha" class="mkt-nivel" aria-label="Filtrar por campanha">
+          <option value="">Todas as campanhas</option>
+        </select>
+        <select id="mktNivel" class="mkt-nivel" style="margin-left:8px" aria-label="Nível do ranking">
           <option value="campaign">Campanhas</option>
           <option value="adset">Conjuntos</option>
           <option value="ad">Anúncios</option>
@@ -1580,6 +1583,7 @@ async function carregarMarketing() {
     mS('mkInvestSub', mN(cs.length) + ' campanha(s) ativa(s)');
     mS('mkCtrSub', mN(t.cliques) + ' cliques · ' + mN(t.impressoes) + ' impr.');
     mS('mkStatus', 'Facebook conectado · ' + cs.length + ' campanhas [PLL]');
+    popularCampanhasMkt(cs);  // dropdown de filtro por campanha
     renderRankingMkt(fb);   // ranking no nível escolhido (campanha/conjunto/anúncio)
   } else {
     const motivo = fb && fb.erro === 'sem_token' ? 'Aguardando o token do Facebook no Vercel'
@@ -1599,6 +1603,23 @@ document.getElementById('mktNivel').addEventListener('change', e => {
   mktNivel = e.target.value;
   renderRankingMkt(window.ultimoFb);
 });
+
+// filtro de campanha (furar dentro de uma campanha: ver só seus conjuntos/anúncios)
+let mktCampanhaFiltro = '';
+document.getElementById('mktCampanha').addEventListener('change', e => {
+  mktCampanhaFiltro = e.target.value;
+  renderRankingMkt(window.ultimoFb);
+});
+// preenche o dropdown de campanhas (a partir do nível campanha do FB), preservando a seleção
+function popularCampanhasMkt(campanhas) {
+  const sel = document.getElementById('mktCampanha');
+  const atual = sel.value;
+  const cs = (campanhas || []).filter((c) => c.id).slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+  sel.innerHTML = '<option value="">Todas as campanhas</option>'
+    + cs.map((c) => `<option value="${c.id}">${c.nome || '—'}</option>`).join('');
+  sel.value = cs.some((c) => c.id === atual) ? atual : '';
+  mktCampanhaFiltro = sel.value;
+}
 
 // ── Resultados do CRM por anúncio (ads_id) → cruzados no ranking ──
 // soma o porAnuncio dos meses do período: { adsId: { leads, reunioes, vendas, ... } }
@@ -1662,7 +1683,8 @@ async function renderRankingMkt(fbCampanha) {
       dados = await r.json();
     } catch (e) { dados = null; }
   }
-  const cs = (dados && dados.campanhas) || [];
+  let cs = (dados && dados.campanhas) || [];
+  if (mktCampanhaFiltro) cs = cs.filter((c) => c.campanhaId === mktCampanhaFiltro);  // furar dentro da campanha
   // cruza os resultados do CRM (reuniões/vendas) por anúncio, agregados no nível atual
   let crmNivel = {};
   try {
