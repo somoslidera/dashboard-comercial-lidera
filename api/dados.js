@@ -136,7 +136,9 @@ async function porAnuncioDoMes(mes) {
 
   // negociações ainda SEM anúncio → resolve ao vivo via lead_id (dl) e cacheia.
   // '_' = tombstone (lead sem ads_id) com TTL 1h: não reconsulta a cada leitura, mas recupera ads_id tardio.
-  const semAd = ids.filter((id) => !adDe[id]).slice(0, 12);
+  // PRIORIDADE: agendamentos/reuniões/vendas/desq primeiro (são poucos e importantes), leads por último.
+  const ordemResolver = [...new Set([].concat(setSql, setR, setV, setD, setL))];
+  const semAd = ordemResolver.filter((id) => !adDe[id]).slice(0, 20);
   if (semAd.length) {
     const dls = await pipeline(semAd.map((id) => ['GET', `dl:${id}`]));
     const sets = [];
