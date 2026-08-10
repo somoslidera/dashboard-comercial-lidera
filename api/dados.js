@@ -86,6 +86,30 @@ async function porFaixaDoMes(mes) {
   return FAIXAS.map((f) => { const a = acc[f.cod]; return { cod: a.cod, nome: a.nome, leads: a.leads, mql: Math.max(0, a.leads - a.desq), sql: a.sql, reunioes: a.reunioes, vendas: a.vendas, faturamento: a.faturamento }; });
 }
 
+// resolve o ads_id de um lead SEM depender do webhook (timing-proof):
+// lead_id → negociações (o título tem o nome) → busca o lead por nome → custom_fields.ads_id.
+async function adsIdViaLead(leadId) {
+  const key = process.env.LEADFORGE_API_KEY;
+  if (!leadId || !key) return null;
+  const base = 'https://api.leadforge.com.br/api/v1';
+  const H = { headers: { 'X-API-Key': key } };
+  try {
+    const rd = await fetch(`${base}/deals/search?lead_id=${leadId}`, H);
+    const jd = await rd.json();
+    let nome = '';
+    for (const d of (jd && jd.deals) || []) {
+      const t = (d.title || '').trim();
+      if (t) { nome = t.includes(' - ') ? t.split(' - ').slice(1).join(' - ').trim() : t; break; }
+    }
+    if (!nome) return null;
+    const rl = await fetch(`${base}/leads/search?name=${encodeURIComponent(nome)}`, H);
+    const jl = await rl.json();
+    const lead = ((jl && jl.leads) || []).find((l) => l.id === leadId);
+    const v = lead && lead.custom_fields && lead.custom_fields.ads_id;
+    return v ? String(v) : null;
+  } catch (e) { return null; }
+}
+
 // funil por ANÚNCIO (ads_id) de um mês "YYYY-MM": mesmas etapas, agrupadas por ad:{deal.id}.
 // O ads_id é o id do anúncio no Facebook (custom_fields.ads_id do lead, capturado no webhook).
 // Devolve { [adsId]: { leads, mql, sql, reunioes, vendas, faturamento } }. Forward-only.
@@ -110,11 +134,27 @@ async function porAnuncioDoMes(mes) {
   const adDe = {};
   ids.forEach((id, i) => { adDe[id] = ads[i]; });
 
+  // negociações ainda SEM anúncio → resolve ao vivo via lead_id (dl) e cacheia.
+  // '_' = tombstone (lead sem ads_id) com TTL 1h: não reconsulta a cada leitura, mas recupera ads_id tardio.
+  const semAd = ids.filter((id) => !adDe[id]).slice(0, 12);
+  if (semAd.length) {
+    const dls = await pipeline(semAd.map((id) => ['GET', `dl:${id}`]));
+    const sets = [];
+    await Promise.all(semAd.map(async (id, i) => {
+      const lid = dls[i]; if (!lid) return;
+      const adsId = await adsIdViaLead(lid);
+      adDe[id] = adsId || '_';
+      sets.push(adsId ? ['SET', `ad:${id}`, adsId] : ['SET', `ad:${id}`, '_', 'EX', 3600]);
+    }));
+    if (sets.length) await pipeline(sets);
+  }
+
+  const real = (a) => a && a !== '_';
   const acc = {};
   const bucket = (a) => (acc[a] || (acc[a] = { leads: 0, desq: 0, sql: 0, reunioes: 0, vendas: 0, faturamento: 0 }));
-  const contar = (set, campo) => set.forEach((id) => { const a = adDe[id]; if (a) bucket(a)[campo]++; });
+  const contar = (set, campo) => set.forEach((id) => { const a = adDe[id]; if (real(a)) bucket(a)[campo]++; });
   contar(setL, 'leads'); contar(setSql, 'sql'); contar(setR, 'reunioes'); contar(setD, 'desq');
-  setV.forEach((id) => { const a = adDe[id]; if (a) { const b = bucket(a); b.vendas++; b.faturamento += vendaMap[id]; } });
+  setV.forEach((id) => { const a = adDe[id]; if (real(a)) { const b = bucket(a); b.vendas++; b.faturamento += vendaMap[id]; } });
 
   const out = {};
   Object.keys(acc).forEach((a) => { const x = acc[a]; out[a] = { leads: x.leads, mql: Math.max(0, x.leads - x.desq), sql: x.sql, reunioes: x.reunioes, vendas: x.vendas, faturamento: x.faturamento }; });

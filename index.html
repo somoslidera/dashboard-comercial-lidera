@@ -424,7 +424,7 @@
           <option value="ad">Anúncios</option>
         </select>
       </h2>
-      <div class="mkt-rhead"><div id="mkRankCol0">Campanha</div><div class="r">Investido</div><div class="r">Leads</div><div class="r">Reuniões</div><div class="r">Vendas</div><div class="r">R$/Venda</div></div>
+      <div class="mkt-rhead"><div id="mkRankCol0">Campanha</div><div class="r">Investido</div><div class="r">Leads</div><div class="r">Agend.</div><div class="r">Vendas</div><div class="r">R$/Venda</div></div>
       <div class="mkt-rank" id="mkRank"></div>
     </div>
   </section>
@@ -1644,9 +1644,9 @@ function crmNoNivel(nivel, crm, mapa) {
   Object.keys(crm).forEach((ad) => {
     const id = nivel === 'ad' ? ad : nivel === 'adset' ? (mapa[ad] || {}).conjuntoId : (mapa[ad] || {}).campanhaId;
     if (!id) return;
-    const a = acc[id] || (acc[id] = { leads: 0, reunioes: 0, vendas: 0, faturamento: 0 });
+    const a = acc[id] || (acc[id] = { leads: 0, sql: 0, reunioes: 0, vendas: 0, faturamento: 0 });
     const o = crm[ad];
-    a.leads += o.leads || 0; a.reunioes += o.reunioes || 0; a.vendas += o.vendas || 0; a.faturamento += o.faturamento || 0;
+    a.leads += o.leads || 0; a.sql += o.sql || 0; a.reunioes += o.reunioes || 0; a.vendas += o.vendas || 0; a.faturamento += o.faturamento || 0;
   });
   return acc;
 }
@@ -1672,12 +1672,12 @@ async function renderRankingMkt(fbCampanha) {
   document.getElementById('mkRank').innerHTML = cs.length
     ? cs.slice(0, 8).map((c, i) => {
         const o = crmNivel[c.id] || {};
-        const reun = o.reunioes || 0, vend = o.vendas || 0;
+        const cLeads = o.leads || 0, agend = o.sql || 0, vend = o.vendas || 0;
         const custoV = (c.investido > 0 && vend > 0) ? mBRL0(c.investido / vend) : '—';
         return `<div class="mkt-rrow"><div class="nome"><span class="pos">${i + 1}</span><span class="nm-txt"><span class="nm" title="${c.nome}">${c.nome || '—'}</span>${c.sub ? `<span class="nm-sub" title="${c.sub}">${c.sub}</span>` : ''}</span></div>`
           + `<div class="c muted">${mBRL0(c.investido)}</div>`
-          + `<div class="c leads">${mN(c.leads)}</div>`
-          + `<div class="c">${mN(reun)}</div>`
+          + `<div class="c leads">${mN(cLeads)}</div>`
+          + `<div class="c">${mN(agend)}</div>`
           + `<div class="c">${mN(vend)}</div>`
           + `<div class="c muted">${custoV}</div></div>`;
       }).join('')
