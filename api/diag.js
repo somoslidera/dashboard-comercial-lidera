@@ -3,15 +3,16 @@
 const R_URL = process.env.KV_REST_API_URL;
 const R_TOKEN = process.env.KV_REST_API_TOKEN;
 
-async function redis(cmd) {
+async function redisRaw(cmd) {
   const r = await fetch(R_URL, {
     method: 'POST',
     headers: { Authorization: `Bearer ${R_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(cmd)
   });
-  const j = await r.json();
-  return j.result;
+  let body; try { body = await r.json(); } catch (e) { body = { parse_erro: String(e) }; }
+  return { status: r.status, body };
 }
+async function redis(cmd) { const x = await redisRaw(cmd); return x.body && x.body.result; }
 
 export default async function handler(req, res) {
   const q = req.query || {};
@@ -21,6 +22,15 @@ export default async function handler(req, res) {
   if (!R_URL || !R_TOKEN) return res.status(500).json({ erro: 'Redis nao configurado' });
 
   res.setHeader('Cache-Control', 'no-store');
+
+  // resposta CRUA do Upstash (mostra a mensagem de erro exata, se houver)
+  if (q.raw) {
+    return res.status(200).json({
+      dbsize_raw: await redisRaw(['DBSIZE']),
+      get_raw: await redisRaw(['GET', 'v:count:2026-07'])
+    });
+  }
+
   try {
     const dbsize = await redis(['DBSIZE']);
     const chaves = {
