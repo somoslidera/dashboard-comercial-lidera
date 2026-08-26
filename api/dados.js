@@ -200,7 +200,7 @@ async function periodoPorDia(res, since, until) {
     conversao: reunioes > 0 ? (vendas / reunioes) * 100 : null,
     meta: Math.round((dias.length / 30) * META_PADRAO) || META_PADRAO
   };
-  res.setHeader('Cache-Control', 's-maxage=55, stale-while-revalidate=30');
+  res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=120');
   return res.status(200).json({ periodo, since, until, dias: dias.length });
 }
 
@@ -212,13 +212,13 @@ export default async function handler(req, res) {
 
   // funil por faixa de um mês específico
   if (q.faixasMes) {
-    res.setHeader('Cache-Control', 's-maxage=55, stale-while-revalidate=30');
+    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=300');
     return res.status(200).json({ mes: q.faixasMes, porFaixa: await porFaixaDoMes(q.faixasMes) });
   }
 
   // funil por anúncio (ads_id) de um mês específico
   if (q.anunciosMes) {
-    res.setHeader('Cache-Control', 's-maxage=55, stale-while-revalidate=30');
+    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=300');
     return res.status(200).json({ mes: q.anunciosMes, porAnuncio: await porAnuncioDoMes(q.anunciosMes) });
   }
 
@@ -279,6 +279,6 @@ export default async function handler(req, res) {
     idxAuto = chaves.length ? Math.max(...chaves) : agoraBR.getUTCMonth();
   }
 
-  res.setHeader('Cache-Control', 's-maxage=55, stale-while-revalidate=30');
+  res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=120');
   return res.status(200).json({ porMes, idxAuto, series: { vendas: seriesVendas }, rastreioDiarioInicio: RASTREIO_DIARIO_INICIO });
 }
