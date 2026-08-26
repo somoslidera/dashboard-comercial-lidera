@@ -60,14 +60,14 @@ async function porFaixaDoMes(mes) {
   const setV = Object.keys(vendaMap);
 
   const ids = [...new Set([].concat(setL, setSql, setR, setD, setV))];
-  const bandas = ids.length ? await pipeline(ids.map((id) => ['GET', `banda:${id}`])) : [];
+  const bandas = ids.length ? ((await pipeline([['MGET', ...ids.map((id) => `banda:${id}`)]]))[0] || []) : [];
   const faixaDe = {};
   ids.forEach((id, i) => { faixaDe[id] = bandas[i]; });
 
   // negociações ainda SEM faixa → resolve ao vivo (a tag pode ter entrado após a captura) e cacheia
   const semFaixa = ids.filter((id) => !faixaDe[id]).slice(0, 40);
   if (semFaixa.length) {
-    const leads = await pipeline(semFaixa.map((id) => ['GET', `dl:${id}`]));
+    const leads = (await pipeline([['MGET', ...semFaixa.map((id) => `dl:${id}`)]]))[0] || [];
     const resolvidos = await Promise.all(semFaixa.map(async (did, i) => {
       const lid = leads[i]; if (!lid) return null;
       const cod = await faixaViaAPI(lid); return cod ? { did, cod } : null;
@@ -130,7 +130,7 @@ async function porAnuncioDoMes(mes) {
 
   const ids = [...new Set([].concat(setL, setSql, setR, setD, setV))];
   if (!ids.length) return {};
-  const ads = await pipeline(ids.map((id) => ['GET', `ad:${id}`]));
+  const ads = (await pipeline([['MGET', ...ids.map((id) => `ad:${id}`)]]))[0] || [];
   const adDe = {};
   ids.forEach((id, i) => { adDe[id] = ads[i]; });
 
@@ -140,7 +140,7 @@ async function porAnuncioDoMes(mes) {
   const ordemResolver = [...new Set([].concat(setSql, setR, setV, setD, setL))];
   const semAd = ordemResolver.filter((id) => !adDe[id]).slice(0, 20);
   if (semAd.length) {
-    const dls = await pipeline(semAd.map((id) => ['GET', `dl:${id}`]));
+    const dls = (await pipeline([['MGET', ...semAd.map((id) => `dl:${id}`)]]))[0] || [];
     const sets = [];
     await Promise.all(semAd.map(async (id, i) => {
       const lid = dls[i]; if (!lid) return;
@@ -176,17 +176,11 @@ function listarDias(since, until) {
 // soma os contadores diários de um intervalo e devolve um período agregado
 async function periodoPorDia(res, since, until) {
   const dias = listarDias(since, until);
-  const cmds = [];
+  const keys = [];
   dias.forEach((d) => {
-    cmds.push(['GET', `v:count:${d}`]);
-    cmds.push(['GET', `v:valor:${d}`]);
-    cmds.push(['GET', `r:${d}`]);
-    cmds.push(['GET', `o:${d}`]);
-    cmds.push(['GET', `n:${d}`]);
-    cmds.push(['GET', `l:${d}`]);
-    cmds.push(['GET', `d:${d}`]);
+    keys.push(`v:count:${d}`, `v:valor:${d}`, `r:${d}`, `o:${d}`, `n:${d}`, `l:${d}`, `d:${d}`);
   });
-  const r = cmds.length ? await pipeline(cmds) : [];
+  const r = keys.length ? ((await pipeline([['MGET', ...keys]]))[0] || []) : [];
   let vendas = 0, valor = 0, reunioes = 0, oport = 0, noshow = 0, leads = 0, desq = 0;
   for (let i = 0; i < dias.length; i++) {
     const b = i * 7;
@@ -234,19 +228,13 @@ export default async function handler(req, res) {
   const agoraBR = new Date(Date.now() - 3 * 3600 * 1000); // fuso Brasil
   const ano = agoraBR.getUTCFullYear();
 
-  // pede os 6 contadores dos 12 meses do ano de uma vez só
-  const cmds = [];
+  // pede os 7 contadores dos 12 meses num ÚNICO comando (MGET = 1 requisição, não 84)
+  const keys = [];
   for (let m = 1; m <= 12; m++) {
     const mes = `${ano}-${String(m).padStart(2, '0')}`;
-    cmds.push(['GET', `v:count:${mes}`]);
-    cmds.push(['GET', `v:valor:${mes}`]);
-    cmds.push(['GET', `r:${mes}`]);
-    cmds.push(['GET', `o:${mes}`]);
-    cmds.push(['GET', `n:${mes}`]);
-    cmds.push(['GET', `l:${mes}`]);
-    cmds.push(['GET', `d:${mes}`]);
+    keys.push(`v:count:${mes}`, `v:valor:${mes}`, `r:${mes}`, `o:${mes}`, `n:${mes}`, `l:${mes}`, `d:${mes}`);
   }
-  const r = await pipeline(cmds);
+  const r = (await pipeline([['MGET', ...keys]]))[0] || [];
 
   const CAMPOS = 7; // v:count, v:valor, r, o, n, l, d
   const porMes = {};
