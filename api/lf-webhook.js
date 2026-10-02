@@ -156,6 +156,36 @@ async function estornarVenda(deal) {
   await redis(['DEL', `vm:${deal.id}`]);
 }
 
+// CONFERÊNCIA DE VENDAS: reabrir a negociação no LeadForge NÃO dispara webhook.
+// Então, de carona nos webhooks que chegam (no máx. 1x a cada 30 min), confere o status atual
+// de cada venda contada no mês; se a negociação existe e NÃO está mais ganha → estorna.
+// Só a partir de RECON_INICIO (meses anteriores foram corrigidos na mão).
+const RECON_INICIO = '2026-10';
+async function conferirVendas() {
+  const key = process.env.LEADFORGE_API_KEY;
+  if (!key) return;
+  if ((await redis(['SET', 'recon:lock', '1', 'EX', 1800, 'NX'])) !== 'OK') return;
+  const agora = new Date(Date.now() - 3 * 3600 * 1000);
+  const meses = [0, 1]
+    .map((k) => new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() - k, 1)).toISOString().slice(0, 7))
+    .filter((m) => m >= RECON_INICIO);
+  for (const mes of meses) {
+    const h = await redis(['HGETALL', `fxs:v:${mes}`]) || [];
+    const ids = Array.isArray(h) ? h.filter((_, i) => i % 2 === 0) : Object.keys(h);
+    await Promise.all(ids.map(async (id) => {
+      const lid = await redis(['GET', `dl:${id}`]);
+      if (!lid) return;
+      try {
+        const r = await fetch(`https://api.leadforge.com.br/api/v1/deals/search?lead_id=${lid}`, { headers: { 'X-API-Key': key } });
+        if (!r.ok) return;
+        const j = await r.json();
+        const d = ((j && j.deals) || []).find((x) => x.id === id);
+        if (d && d.status && d.status !== 'won') await estornarVenda({ id });   // reaberta/perdida
+      } catch (e) { /* na dúvida, não mexe */ }
+    }));
+  }
+}
+
 async function lerCorpo(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   if (typeof req.body === 'string') { try { return JSON.parse(req.body); } catch { return {}; } }
@@ -254,6 +284,9 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('erro no webhook:', e);
   }
+
+  // confere vendas reabertas (throttle de 30 min; não atrapalha o evento acima)
+  try { await conferirVendas(); } catch (e) { console.error('erro na conferencia:', e); }
 
   // sempre responde 200 rápido pro LeadForge não ficar re-tentando
   return res.status(200).json({ ok: true });
