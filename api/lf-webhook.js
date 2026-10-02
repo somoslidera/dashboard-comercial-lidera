@@ -125,6 +125,37 @@ async function primeiraVez(mes, chave) {
   return (await redis(['SADD', `proc:${mes}`, chave])) === 1;
 }
 
+// ESTORNO: a venda foi ganha (e contada) e depois o cliente desistiu.
+// Desconta do mês em que ela foi contada. Idempotente: só age se a venda ainda constar como contada.
+async function estornarVenda(deal) {
+  if (!deal || !deal.id) return;
+  let mes = null, dia = null, valor = 0;
+  const info = await redis(['GET', `vm:${deal.id}`]);
+  if (info) {
+    try { const x = JSON.parse(info); mes = x.mes; dia = x.dia; valor = parseFloat(x.valor) || 0; } catch (e) { /* ignora */ }
+  }
+  if (!mes) {
+    // vendas contadas antes de existir o vm:{id} → procura nos últimos 3 meses
+    const agora = new Date(Date.now() - 3 * 3600 * 1000);
+    for (let k = 0; k < 3 && !mes; k++) {
+      const d = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() - k, 1));
+      const m = d.toISOString().slice(0, 7);
+      const v = await redis(['HGET', `fxs:v:${m}`, deal.id]);
+      if (v != null) { mes = m; valor = parseFloat(v) || 0; }
+    }
+  }
+  if (!mes) return;                                                   // nunca foi contada → nada a estornar
+  if ((await redis(['SREM', `proc:${mes}`, `venda:${deal.id}`])) !== 1) return;  // já estornada
+  await redis(['DECR', `v:count:${mes}`]);
+  await redis(['INCRBYFLOAT', `v:valor:${mes}`, -valor]);
+  if (dia) {
+    await redis(['DECR', `v:count:${dia}`]);
+    await redis(['INCRBYFLOAT', `v:valor:${dia}`, -valor]);
+  }
+  await redis(['HDEL', `fxs:v:${mes}`, deal.id]);
+  await redis(['DEL', `vm:${deal.id}`]);
+}
+
 async function lerCorpo(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   if (typeof req.body === 'string') { try { return JSON.parse(req.body); } catch { return {}; } }
@@ -163,6 +194,8 @@ export default async function handler(req, res) {
           await redis(['INCR', `v:count:${dia}`]);              // diário
           await redis(['INCRBYFLOAT', `v:valor:${dia}`, valor]);
           if (deal.id) {                                        // por faixa (negociação; resolvida na leitura)
+            // guarda onde a venda foi contada, p/ conseguir estornar se o cliente desistir
+            await redis(['SET', `vm:${deal.id}`, JSON.stringify({ mes, dia, valor })]);
             await marcarFaixaDeal(deal);
             await marcarAnuncioDeal(deal, lead);
             await redis(['HSET', `fxs:v:${mes}`, deal.id, valor]);
@@ -196,6 +229,10 @@ export default async function handler(req, res) {
           await redis(['INCR', `n:${dia}`]);
         }
       }
+    } else if ((evento === 'deal.closed' || evento === 'deal.lost') &&
+               deal.funnel_id === F_VENDAS && (deal.status === 'lost' || deal.status === 'abandoned')) {
+      // CLIENTE DESISTIU: venda que já tinha sido contada foi encerrada como perdida → estorna
+      await estornarVenda(deal);
     } else if (evento === 'deal.closed') {
       // DESQUALIFICAÇÃO no Pré Vendas → tira do MQL (MQL = leads − desqualificados).
       // deal.closed dispara em qualquer encerramento e traz a etapa; só contam LEAD DESQUALIFICADO e PERDA SDR.
