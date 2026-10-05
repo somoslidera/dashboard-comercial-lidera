@@ -248,6 +248,41 @@
   .pp-acoes{display:flex;justify-content:flex-end;gap:8px}
   .pp-btn{font-family:'Figtree',sans-serif;font-weight:700;font-size:14px;border:none;border-radius:100px;padding:.5em 1.2em;cursor:pointer;color:#0A1322;background:linear-gradient(180deg,var(--gold-soft),var(--gold))}
   .pp-btn.ghost{background:transparent;border:1px solid var(--line-strong);color:var(--text-2)}
+
+  /* ── PAINEL SDR (controle semanal) ── */
+  .sd-bar{height:clamp(4px,.7vh,7px);border-radius:100px;background:rgba(0,0,0,.32);overflow:hidden}
+  .sd-bar i{display:block;height:100%;width:0;border-radius:100px;background:linear-gradient(90deg,var(--gold),var(--gold-soft));transition:width 1.2s cubic-bezier(.22,1,.36,1)}
+  .sd-bar i.ok{background:linear-gradient(90deg,#3fbf8f,#8ff0cf)}
+  .sd-bar i.ruim{background:linear-gradient(90deg,#c0504d,#f08f8f)}
+  .sd-thead,.sd-row{display:grid;grid-template-columns:1.55fr repeat(7,1fr);gap:6px;align-items:center}
+  .sd-thead{color:var(--text-3);font-size:clamp(8px,1vh,11px);font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:0 clamp(8px,1vw,14px) 6px;border-bottom:1px solid var(--line)}
+  .sd-thead div:not(:first-child),.sd-row .c{text-align:right}
+  .sd-tbody{flex:1;display:flex;flex-direction:column;gap:clamp(3px,.6vh,8px);min-height:0;overflow:hidden;margin-top:clamp(4px,.7vh,9px)}
+  .sd-row{flex:1;max-height:64px;min-height:0;background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:10px;padding:0 clamp(8px,1vw,14px)}
+  .sd-row.atual{border-color:rgba(203,167,94,.45);background:rgba(203,167,94,.06)}
+  .sd-row .sem{font-weight:600;font-size:clamp(10px,1.35vh,15px);white-space:nowrap}
+  .sd-row .sem small{display:block;color:var(--gold);font-size:.7em;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+  .sd-row .c{font-variant-numeric:tabular-nums;font-size:clamp(11px,1.45vh,16px);font-weight:600;white-space:nowrap}
+  .sd-row .c small{color:var(--text-3);font-weight:600;font-size:.75em}
+  .sd-row .ok{color:#8ff0cf}.sd-row .meio{color:var(--gold-soft)}.sd-row .ruim{color:#f08f8f}.sd-row .mut{color:var(--text-2)}
+  .sd-ritmo{flex:1;display:grid;grid-template-columns:repeat(7,1fr);gap:clamp(6px,.8vw,14px);min-height:0}
+  .sd-dia{display:flex;flex-direction:column;align-items:center;gap:5px;min-height:0}
+  .sd-col{position:relative;flex:1;width:100%;max-width:72px;display:flex;align-items:flex-end;min-height:0}
+  .sd-col .b{width:100%;border-radius:9px 9px 4px 4px;background:linear-gradient(180deg,var(--gold-soft),var(--gold));transition:height 1.2s cubic-bezier(.22,1,.36,1)}
+  .sd-col .meta{position:absolute;left:-4px;right:-4px;border-top:2px dashed rgba(143,240,207,.75)}
+  .sd-dia .n{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(14px,2vh,22px);line-height:1}
+  .sd-dia .d{color:var(--text-2);font-weight:800;font-size:clamp(9px,1.1vh,12px);letter-spacing:.1em;text-transform:uppercase}
+  .sd-dia .l{color:var(--text-3);font-size:clamp(8px,1vh,11px);font-weight:600;white-space:nowrap}
+  .sd-dia.hoje .d{color:var(--gold)}
+  .sd-dia.futuro{opacity:.35}
+  .sd-legenda{color:var(--text-3);font-size:clamp(8px,1vh,11px);font-weight:600;margin-top:clamp(6px,.9vh,10px)}
+  .sd-plano{flex:0 0 auto;margin-top:clamp(10px,1.4vh,16px);border-top:1px solid var(--line);padding-top:clamp(10px,1.4vh,16px);display:flex;flex-direction:column;gap:clamp(4px,.7vh,8px)}
+  .sd-plano .tit{color:var(--gold);font-size:clamp(8px,1vh,11px);font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+  .sd-plano .cad{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;font-size:clamp(11px,1.45vh,16px);color:var(--text-2)}
+  .sd-plano .cad b{font-family:'Fraunces',serif;color:var(--gold-soft);font-size:1.3em;font-weight:600}
+  .sd-plano .cad .seta{color:var(--text-3)}
+  .sd-plano .info{color:var(--text-2);font-size:clamp(9px,1.15vh,12px)}
+  .sd-plano .info strong{color:var(--text)}
 </style>
 </head>
 <body>
@@ -436,6 +471,53 @@
     <span id="mkStatus">Carregando…</span>
     <span>Conta 01 · Mentoria</span>
     <span>Atualização automática a cada 1 minuto</span>
+  </footer>
+</div>
+
+<!-- ══════════════════ PAINEL DO SDR (controle semanal) ══════════════════ -->
+<div class="dashboard sdr" id="viewSdr" hidden>
+  <header>
+    <div class="brand-block">
+      <div class="overline">Controle do SDR</div>
+      <div class="brand">Lidera <span>Soluções</span></div>
+    </div>
+    <div class="title">Andamento <b>semana a semana</b></div>
+    <div class="header-controls">
+      <div class="mes-filtro-wrap">
+        <select class="mes-filtro view-select" aria-label="Escolher painel">
+          <option value="vendas">Comercial</option>
+          <option value="marketing">Marketing</option>
+          <option value="sdr">SDR</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <section class="mkt-kpis">
+    <div class="card mkt-kpi"><div class="mk-top"><span class="mk-ic">📥</span>Leads na semana</div><div class="mk-val" id="sdLeads">—</div><div class="sd-bar"><i id="sdLeadsBar"></i></div><div class="mk-sub" id="sdLeadsSub">—</div></div>
+    <div class="card mkt-kpi destaque"><div class="mk-top"><span class="mk-ic">📅</span>Agendamentos na semana</div><div class="mk-val" id="sdAgend">—</div><div class="sd-bar"><i id="sdAgendBar"></i></div><div class="mk-sub" id="sdAgendSub">—</div></div>
+    <div class="card mkt-kpi"><div class="mk-top"><span class="mk-ic">🤝</span>Reuniões realizadas</div><div class="mk-val" id="sdReun">—</div><div class="sd-bar"><i id="sdReunBar"></i></div><div class="mk-sub" id="sdReunSub">—</div></div>
+    <div class="card mkt-kpi"><div class="mk-top"><span class="mk-ic">🎯</span>Taxa de agendamento</div><div class="mk-val" id="sdTaxa">—</div><div class="mk-sub" id="sdTaxaSub">agendamentos ÷ leads da semana</div></div>
+  </section>
+
+  <section class="mkt-body">
+    <div class="card mkt-panel">
+      <h2>Semana a semana <span class="tag">DOM → SÁB</span></h2>
+      <div class="sd-thead"><div>Semana</div><div>Leads</div><div>Desq.</div><div>Agend.</div><div>Tx. agend.</div><div>Reuniões</div><div>Compar.</div><div>Vendas</div></div>
+      <div class="sd-tbody" id="sdSemanas"></div>
+    </div>
+    <div class="card mkt-panel">
+      <h2>Ritmo desta semana <span class="tag" id="sdSemanaTag">—</span></h2>
+      <div class="sd-ritmo" id="sdRitmo"></div>
+      <div class="sd-legenda">Barra = agendamentos do dia · tracejado = meta diária · embaixo, leads recebidos</div>
+      <div class="sd-plano" id="sdPlano"></div>
+    </div>
+  </section>
+
+  <footer>
+    <span id="sdStatus">Carregando…</span>
+    <span>1 SDR · semana de domingo a sábado</span>
+    <span>Atualização automática a cada 5 minutos</span>
   </footer>
 </div>
 
@@ -1752,6 +1834,118 @@ document.getElementById('ppAplicar').addEventListener('click', async () => {
     carregarMarketing();
   }
 });
+
+/* ═══════════════════════════════════════════════════════════
+   PAINEL DO SDR — controle semanal (domingo a sábado)
+   Isolado: lê só /api/sdr e só mexe nos elementos #sd*.
+   ═══════════════════════════════════════════════════════════ */
+VIEWS.sdr = document.getElementById('viewSdr');
+document.querySelectorAll('.view-select').forEach((s) => {
+  if (!s.querySelector('option[value="sdr"]')) s.add(new Option('SDR', 'sdr'));
+});
+let sdrIntervalo = null;
+const trocarViewBase = trocarView;
+trocarView = function (v) {
+  trocarViewBase(v);
+  if (viewAtiva === 'sdr') {
+    carregarSdr();
+    if (!sdrIntervalo) sdrIntervalo = setInterval(() => { if (viewAtiva === 'sdr') carregarSdr(); }, 5 * 60 * 1000);
+  }
+};
+
+const SD_DOW = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const SD_MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const sdDiasNoMes = (data) => { const [y, m] = data.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).getUTCDate(); };
+const sdDDMM = (data) => data.slice(8, 10) + '/' + data.slice(5, 7);
+const sdPct = (v) => (v == null || !isFinite(v)) ? '—' : Math.round(v * 100) + '%';     // v = fração
+const sdMes = (m) => SD_MES[+m.slice(5, 7) - 1];
+
+async function carregarSdr() {
+  let j = null;
+  try {
+    const r = await fetch('/api/sdr', { cache: 'no-store' });   // URL fixa: o cache da Vercel segura e poupa o Redis
+    if (r.status === 401) { location.href = '/login.html'; return; }
+    j = await r.json();
+  } catch (e) { mS('sdStatus', 'Sem conexão com os dados — tentando novamente…'); return; }
+  if (!j || j.erro || !Array.isArray(j.dias)) { mS('sdStatus', 'Falha ao ler os dados' + (j && j.detalhe ? ': ' + j.detalhe : '')); return; }
+  renderSdr(j);
+}
+
+function renderSdr(j) {
+  const P = j.plano.mensal;
+  const metaDia = (data, k) => (P[k] != null ? P[k] / sdDiasNoMes(data) : 0);
+  const soma = (ds, k) => ds.reduce((s, d) => s + (d[k] || 0), 0);
+  const somaMeta = (ds, k) => ds.reduce((s, d) => s + metaDia(d.data, k), 0);
+  const cor = (real, meta) => (!meta ? 'mut' : real >= meta ? 'ok' : real >= meta * 0.8 ? 'meio' : 'ruim');
+
+  const semanas = [];
+  for (let i = 0; i < j.dias.length; i += 7) semanas.push(j.dias.slice(i, i + 7));
+  const atual = semanas[semanas.length - 1];
+  const ateHoje = atual.filter((d) => !d.futuro);
+
+  // ── KPIs da semana atual (domingo → hoje), com barra contra a meta da semana inteira
+  const kpi = (id, k) => {
+    const real = soma(ateHoje, k), metaSem = Math.round(somaMeta(atual, k)), metaAte = somaMeta(ateHoje, k);
+    mS(id, mN(real));
+    const bar = document.getElementById(id + 'Bar');
+    if (bar) { bar.style.width = (metaSem ? Math.min(100, real / metaSem * 100) : 0) + '%'; bar.className = metaSem ? cor(real, metaAte) : ''; }
+    mS(id + 'Sub', metaSem ? `meta da semana: ${metaSem} · esperado até hoje: ${Math.round(metaAte)}` : 'meta ainda não calculada');
+    return real;
+  };
+  const wL = kpi('sdLeads', 'leads'), wA = kpi('sdAgend', 'agend'), wR = kpi('sdReun', 'reunioes');
+  const wN = soma(ateHoje, 'noshow');
+  mS('sdTaxa', wL ? sdPct(wA / wL) : '—');
+  mS('sdTaxaSub', 'comparecimento da semana: ' + ((wR + wN) ? sdPct(wR / (wR + wN)) : '—'));
+
+  // ── Semana a semana (mais recente em cima)
+  document.getElementById('sdSemanas').innerHTML = semanas.slice().reverse().map((ds) => {
+    const vis = ds.filter((d) => !d.futuro);
+    const semDado = ds.every((d) => d.semDado);
+    const eAtual = ds === atual;
+    const L = soma(vis, 'leads'), D = soma(vis, 'desq'), A = soma(vis, 'agend'), R = soma(vis, 'reunioes'), N = soma(vis, 'noshow'), V = soma(vis, 'vendas');
+    const mA = Math.round(somaMeta(ds, 'agend')), mR = Math.round(somaMeta(ds, 'reunioes'));
+    const v = (x) => (semDado ? '—' : mN(x));
+    const meta = (m) => (m ? ` <small>/ ${m}</small>` : '');
+    return `<div class="sd-row${eAtual ? ' atual' : ''}">`
+      + `<div class="sem">${sdDDMM(ds[0].data)} – ${sdDDMM(ds[6].data)}${eAtual ? '<small>em andamento</small>' : ''}</div>`
+      + `<div class="c">${v(L)}</div>`
+      + `<div class="c mut">${v(D)}</div>`
+      + `<div class="c ${semDado ? '' : cor(A, somaMeta(vis, 'agend'))}">${v(A)}${meta(mA)}</div>`
+      + `<div class="c">${!semDado && L ? sdPct(A / L) : '—'}</div>`
+      + `<div class="c ${semDado ? '' : cor(R, somaMeta(vis, 'reunioes'))}">${v(R)}${meta(mR)}</div>`
+      + `<div class="c">${!semDado && (R + N) ? sdPct(R / (R + N)) : '—'}</div>`
+      + `<div class="c mut">${v(V)}</div></div>`;
+  }).join('');
+
+  // ── Ritmo da semana atual, dia a dia
+  const mAg = (d) => metaDia(d.data, 'agend');
+  const teto = Math.max(1, ...atual.map((d) => (d.futuro ? 0 : d.agend)), ...atual.map((d) => mAg(d) * 1.5));
+  document.getElementById('sdRitmo').innerHTML = atual.map((d) => {
+    const h = d.futuro ? 0 : (d.agend / teto) * 100, m = (mAg(d) / teto) * 100;
+    return `<div class="sd-dia${d.data === j.hoje ? ' hoje' : ''}${d.futuro ? ' futuro' : ''}">`
+      + `<div class="n">${d.futuro ? '·' : mN(d.agend)}</div>`
+      + `<div class="sd-col">${m ? `<div class="meta" style="bottom:${m}%"></div>` : ''}<div class="b" style="height:${h}%"></div></div>`
+      + `<div class="d">${SD_DOW[d.dow]} ${d.data.slice(8, 10)}</div>`
+      + `<div class="l">${d.futuro ? '&nbsp;' : mN(d.leads) + ' leads'}</div></div>`;
+  }).join('');
+  mS('sdSemanaTag', sdDDMM(atual[0].data) + ' – ' + sdDDMM(atual[6].data));
+
+  // ── Plano do mês: meta de faturamento convertida em metas do funil
+  const T = j.plano.taxas, M = j.mesAtual, base = j.plano.base;
+  const diasMes = sdDiasNoMes(j.hoje), restantes = diasMes - (+j.hoje.slice(8, 10)) + 1;
+  const falta = P.agend != null ? Math.max(0, P.agend - M.agend) : null;
+  const b = (x) => `<b>${x == null ? '—' : mN(x)}</b>`;
+  document.getElementById('sdPlano').innerHTML =
+    `<div class="tit">Plano de ${sdMes(M.mes)} · meta de ${mBRL0(j.plano.metaFaturamento)}</div>`
+    + `<div class="cad">${b(P.leads)} leads <span class="seta">→</span> ${b(P.agend)} agendamentos <span class="seta">→</span> ${b(P.reunioes)} reuniões <span class="seta">→</span> ${b(P.vendas)} vendas</div>`
+    + (P.agend != null
+      ? `<div class="info">No mês até agora: <strong>${mN(M.agend)}</strong> agendamentos de ${mN(P.agend)} (${sdPct(M.agend / P.agend)})`
+        + (falta > 0 ? ` · faltam ${mN(falta)}, ≈ <strong>${(falta / restantes).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} por dia</strong> até o fim do mês` : ' · meta do mês batida ✓') + `</div>`
+      : '')
+    + `<div class="info">Taxas reais de ${sdMes(base[0])}–${sdMes(base[base.length - 1])}: ticket ${mBRL0(T.ticket)} · agendamento ${sdPct(T.agendamento)} · comparecimento ${sdPct(T.comparecimento)} · fechamento ${sdPct(T.fechamento)}</div>`;
+
+  mS('sdStatus', 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+}
 
 carregarDados();
 atualizarMapa();
