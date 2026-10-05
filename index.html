@@ -2063,12 +2063,13 @@ function renderSdr(j, agenda, agendaAtual) {
     const DIAS = [1, 2, 3, 4, 5, 6, 0];                    // Seg → Dom
     // "Dia todo" (histórico): cada reunião marcada na agenda conta como realizada se houver uma "realizada"
     // registrada no LeadForge no mesmo dia ou até JANELA dias depois (o SDR às vezes marca depois); senão, falta.
-    // Dias sem NENHUM registro no painel (ex.: apagão do Redis em ago/26) ficam de fora: não dá p/ saber se aconteceram.
+    // Dias úteis sem NENHUM registro no painel (ex.: apagão do Redis em ago/26) ficam de fora: não dá p/ saber se aconteceram.
     // Reuniões dos últimos JANELA dias ainda podem ser marcadas → ficam pendentes (não entram).
     const JANELA = 2, DIA_MS = 86400000;
     const diaTodo = {};
     const soma1 = (dow, campo, n = 1) => { const c = diaTodo[dow] || (diaTodo[dow] = { reunioes: 0, faltas: 0 }); c[campo] += n; };
-    const semRegistro = (d) => !d.leads && !d.agend && !d.reunioes && !d.desq;
+    // apagão = DIA ÚTIL sem nenhum registro (todo dia útil entra lead). Fim de semana vazio é normal → nunca descarta.
+    const semRegistro = (d) => d.dow >= 1 && d.dow <= 5 && !d.leads && !d.agend && !d.reunioes && !d.desq;
     const fila = [];                                       // reuniões ainda sem "realizada"
     j.dias.filter((d) => d.noMes && !d.semDado && d.data < j.hoje).forEach((d) => {
       if (semRegistro(d)) return;
@@ -2100,7 +2101,7 @@ function renderSdr(j, agenda, agendaAtual) {
         + DIAS.map((d) => (temTurno ? cel(T[d + '-' + k]) : '<div class="cel vazia"><small>coletando</small></div>')).join('');
     });
     hm.innerHTML = html;
-    mS('sdNsInfo', '% = reuniões marcadas na agenda p/ aquele dia sem "realizada" no LeadForge (mesmo dia ou até 2 dias depois) ÷ marcadas. Dias sem registro no painel (apagão de ago/26) ficam de fora. '
+    mS('sdNsInfo', '% = reuniões marcadas na agenda p/ aquele dia sem "realizada" no LeadForge (mesmo dia ou até 2 dias depois) ÷ marcadas. Dias úteis sem nenhum registro no painel (apagão de ago/26) ficam de fora. '
       + (temTurno
         ? `Turnos contados desde ${sdDDMM(agenda.turno.desde)} (${agenda.turno.casadas} de ${agenda.turno.realizadasRegistradas} realizadas casadas com a agenda).`
         : 'Turnos: começam a contar com as próximas reuniões realizadas — antes, o LeadForge guardou só quantas aconteceram no dia, não qual.'));
