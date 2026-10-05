@@ -235,6 +235,13 @@ export default async function handler(req, res) {
         if (await primeiraVez(mes, `reuniao:${deal.id}`)) {
           await redis(['INCR', `r:${mes}`]);
           await redis(['INCR', `r:${dia}`]);
+          // guarda QUAL reunião foi realizada (p/ casar com o evento da agenda e saber o turno do no-show)
+          await redis(['RPUSH', `rl:${mes}`, JSON.stringify({
+            t: iso || new Date().toISOString(), deal: deal.id || null,
+            lead: deal.lead_id || lead.id || null, email: lead.email || null,
+            fone: lead.phone || ((lead.remotejid || '').split('@')[0]) || null,
+            nome: lead.full_name || null, titulo: deal.title || null
+          })]);
           if (deal.id) { await marcarFaixaDeal(deal); await marcarAnuncioDeal(deal, lead); await redis(['SADD', `fxs:r:${mes}`, deal.id]); }
         }
       }

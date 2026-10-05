@@ -288,12 +288,13 @@
   .sd-plano .cad .seta{color:var(--text-3)}
   .sd-plano .info{color:var(--text-2);font-size:clamp(9px,1.15vh,12px)}
   .sd-plano .info strong{color:var(--text)}
-  .sd-heat{flex:1;display:grid;grid-template-columns:auto repeat(7,1fr);grid-template-rows:auto repeat(3,1fr);gap:clamp(3px,.5vh,6px);min-height:0}
+  .sd-heat{flex:1;display:grid;grid-template-columns:auto repeat(7,1fr);grid-template-rows:auto repeat(4,1fr);gap:clamp(3px,.5vh,6px);min-height:0}
   .sd-heat .hd{text-align:center;color:var(--text-2);font-weight:800;font-size:clamp(8px,1vh,11px);letter-spacing:.08em;text-transform:uppercase}
   .sd-heat .tl{display:flex;align-items:center;color:var(--text-2);font-weight:700;font-size:clamp(9px,1.1vh,12px);padding-right:6px}
   .sd-heat .cel{border-radius:8px;border:1px solid var(--line);background:rgb(240 143 143 / calc(var(--a,0) * .55));display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0;line-height:1.1}
   .sd-heat .cel b{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(12px,1.7vh,19px)}
   .sd-heat .cel small{color:var(--text-2);font-size:clamp(8px,.95vh,10px);font-weight:600}
+  .sd-heat .tl.forte{color:var(--gold-soft)}
   .sd-heat .cel.vazia{color:var(--text-3);background:rgba(255,255,255,.02)}
   .sd-vazio{grid-column:1/-1;grid-row:1/-1;display:grid;place-items:center;text-align:center;color:var(--text-2);font-size:clamp(10px,1.3vh,14px);padding:0 10%}
 </style>
@@ -522,7 +523,7 @@
       <h2>Semana a semana <span class="tag">DOM → SÁB</span> <span class="tag" id="sdFiltroTag" hidden></span></h2>
       <div class="sd-thead"><div>Semana</div><div>Leads</div><div>Desq.</div><div>Agend.</div><div>Tx. agend.</div><div>Marcou p/</div><div>Reuniões</div><div>No-show</div><div>Vendas</div><div>Tx. vendas</div></div>
       <div class="sd-tbody" id="sdSemanas"></div>
-      <div class="sd-legenda"><b>meta</b> = meta da semana (meta do mês ÷ dias do mês × dias da semana) · cor: verde no ritmo, dourado ≥ 80%, vermelho abaixo · <b>Marcou p/</b> = reuniões marcadas na semana (Google Agenda): p/ a mesma semana · p/ a seguinte · <b>No-show</b> = <span id="sdLegNs">faltas ÷ (realizadas + faltas)</span> · <b>Tx. vendas</b> = vendas ÷ reuniões realizadas</div>
+      <div class="sd-legenda"><b>meta</b> = meta da semana (meta do mês ÷ dias do mês × dias da semana) · cor: verde no ritmo, dourado ≥ 80%, vermelho abaixo · <b>Marcou p/</b> = reuniões marcadas na semana (Google Agenda): p/ a mesma semana · p/ a seguinte · <b>No-show</b> = (agendamentos − reuniões realizadas) ÷ agendamentos ·<b>Tx. vendas</b> = vendas ÷ reuniões realizadas</div>
       <div class="sd-plano" id="sdPlano"></div>
     </div>
     <div class="sd-direita">
@@ -1957,16 +1958,9 @@ function renderSdr(j, agenda, agendaAtual) {
   const cor = (real, meta) => (!meta ? 'mut' : real >= meta ? 'ok' : real >= meta * 0.8 ? 'meio' : 'ruim');
   const temAgenda = (a) => !!(a && !a.erro && a.semanas);
   const semAg = (a, dom) => (temAgenda(a) && a.semanas[dom]) || null;
-  // NO-SHOW de um conjunto de dias. Com a agenda: reuniões marcadas p/ esses dias (horário já passado)
-  // que não aconteceram ÷ marcadas. Sem a agenda: faltas registradas no LeadForge ÷ (realizadas + faltas).
-  const noShow = (dias, R, N, ag) => {
-    if (temAgenda(ag) && ag.porDia) {
-      const marcadas = dias.reduce((s, d) => s + (ag.porDia[d.data] || 0), 0);
-      const faltas = Math.max(0, marcadas - R);
-      return { taxa: marcadas ? faltas / marcadas : null, faltas, base: marcadas };
-    }
-    return { taxa: (R + N) ? N / (R + N) : null, faltas: N, base: R + N };
-  };
+  // NO-SHOW da semana = (agendamentos − reuniões realizadas) ÷ agendamentos (definição do comercial).
+  // Se aconteceram mais reuniões que agendamentos (marcadas em semanas anteriores), fica 0%.
+  const noShow = (A, R) => { const faltas = Math.max(0, A - R); return { taxa: A ? faltas / A : null, faltas, base: A }; };
 
   const atual = j.semanaAtual;
   const ateHoje = atual.filter((d) => !d.futuro);
@@ -1983,10 +1977,7 @@ function renderSdr(j, agenda, agendaAtual) {
   const wL = kpi('sdLeads', 'leads'), wA = kpi('sdAgend', 'agend'), wR = kpi('sdReun', 'reunioes');
   const wN = soma(ateHoje, 'noshow');
   mS('sdTaxa', wL ? sdPct(wA / wL) : '—');
-  document.getElementById('sdLegNs').innerHTML = (temAgenda(agenda) && agenda.porDia)
-    ? 'reuniões marcadas p/ a semana (Google Agenda) que não aconteceram ÷ marcadas — remarcadas e canceladas não contam'
-    : 'faltas registradas no LeadForge ÷ (realizadas + faltas) — ao conectar a Google Agenda, passa a ser marcadas p/ a semana que não aconteceram';
-  const nsW = noShow(ateHoje, wR, wN, agendaAtual);
+  const nsW = noShow(wA, wR);
   mS('sdTaxaSub', 'no-show da semana: ' + sdPct(nsW.taxa) + (nsW.base ? ` (${nsW.faltas} de ${nsW.base})` : ''));
   const sa = semAg(agendaAtual, atual[0].data);
   mS('sdAgendAgenda', sa
@@ -2020,7 +2011,7 @@ function renderSdr(j, agenda, agendaAtual) {
       + `<div class="c" title="reuniões marcadas nesta semana (Google Agenda): p/ a mesma semana · p/ a seguinte">${ag ? `${ag.mesma} · ${ag.proxima}` : '—'}${ag && ag.depois ? `<span class="meta-l">+${ag.depois} depois</span>` : ''}</div>`
       + comMeta(R, 'reunioes')
       + (() => {
-        const ns = noShow(vis, R, N, agenda);
+        const ns = noShow(A, R);
         return `<div class="c">${!semDado && ns.base ? sdPct(ns.taxa) + `<span class="meta-l">${ns.faltas} de ${ns.base}</span>` : '—'}</div>`;
       })()
       + `<div class="c mut">${v(V)}</div>`
@@ -2058,33 +2049,45 @@ function renderSdr(j, agenda, agendaAtual) {
     + andamento
     + `<div class="info">Taxas reais de ${sdMes(base[0])}–${sdMes(base[base.length - 1])}: ticket ${mBRL0(T.ticket)} · agendamento ${sdPct(T.agendamento)} · comparecimento ${sdPct(T.comparecimento)} · fechamento ${sdPct(T.fechamento)}</div>`;
 
-  // ── No-show por dia da semana × turno (no-shows casados com o evento da Google Agenda)
+  // ── No-show por dia da semana e turno (Google Agenda × reuniões realizadas no LeadForge)
+  //    "Dia todo": histórico — por dia, reuniões marcadas p/ aquele dia (agenda) que não foram realizadas naquele dia.
+  //    Turnos: só a partir do registro de QUAL reunião foi realizada (antes disso o LeadForge guardou só a contagem do dia).
   mS('sdNsTag', j.filtroMes ? SD_MES_LONGO[+j.filtroMes.slice(5, 7) - 1] : 'últimas 8 semanas');
   const hm = document.getElementById('sdHeat');
-  if (!temAgenda(agenda)) {
+  if (!temAgenda(agenda) || !agenda.porDia) {
     hm.innerHTML = `<div class="sd-vazio">${agenda && agenda.erro === 'sem_agenda'
       ? 'Conecte a Google Agenda do comercial (link iCal secreto) pra ver em que dia e turno os no-shows acontecem.'
       : 'Agenda indisponível no momento.'}</div>`;
     mS('sdNsInfo', '');
   } else {
-    const S = agenda.noshow.slots || {};
-    const dias = [1, 2, 3, 4, 5, 6, 0];                    // Seg → Dom
-    let html = '<div></div>' + dias.map((d) => `<div class="hd">${SD_DOW[d]}</div>`).join('');
+    const DIAS = [1, 2, 3, 4, 5, 6, 0];                    // Seg → Dom
+    const diaTodo = {};
+    j.dias.filter((d) => d.noMes && !d.futuro && !d.semDado).forEach((d) => {
+      const marcadas = agenda.porDia[d.data] || 0;
+      if (!marcadas) return;
+      const c = diaTodo[d.dow] || (diaTodo[d.dow] = { reunioes: 0, faltas: 0 });
+      c.reunioes += marcadas; c.faltas += Math.max(0, marcadas - d.reunioes);
+    });
+    const T = (agenda.turno && agenda.turno.slots) || {};
+    const temTurno = !!(agenda.turno && agenda.turno.desde);
+    const n1 = (v) => (Number.isInteger(v) ? String(v) : v.toLocaleString('pt-BR', { maximumFractionDigits: 1 }));
+    const cel = (c) => {
+      if (!c || !c.reunioes) return '<div class="cel vazia">—</div>';
+      const taxa = c.faltas / c.reunioes;
+      return `<div class="cel" style="--a:${Math.min(1, taxa * 1.6).toFixed(2)}" title="${n1(c.faltas)} falta(s) em ${c.reunioes} reuniões marcadas">`
+        + `<b>${sdPct(taxa)}</b><small>${n1(c.faltas)} de ${c.reunioes}</small></div>`;
+    };
+    let html = '<div></div>' + DIAS.map((d) => `<div class="hd">${SD_DOW[d]}</div>`).join('');
+    html += '<div class="tl forte">Dia todo</div>' + DIAS.map((d) => cel(diaTodo[d])).join('');
     [['manha', 'Manhã'], ['tarde', 'Tarde'], ['noite', 'Noite']].forEach(([k, nome]) => {
-      html += `<div class="tl">${nome}</div>`;
-      dias.forEach((d) => {
-        const c = S[d + '-' + k];
-        if (!c || !c.reunioes) { html += '<div class="cel vazia">—</div>'; return; }
-        const taxa = c.noshow / c.reunioes;
-        html += `<div class="cel" style="--a:${Math.min(1, taxa * 1.6).toFixed(2)}" title="${c.noshow} no-show em ${c.reunioes} reuniões marcadas">`
-          + `<b>${sdPct(taxa)}</b><small>${c.noshow} de ${c.reunioes}</small></div>`;
-      });
+      html += `<div class="tl">${nome}</div>`
+        + DIAS.map((d) => (temTurno ? cel(T[d + '-' + k]) : '<div class="cel vazia"><small>coletando</small></div>')).join('');
     });
     hm.innerHTML = html;
-    const ns = agenda.noshow;
-    mS('sdNsInfo', (ns.identificados + ns.naoIdentificados) === 0
-      ? 'Ainda sem no-shows cruzados com a agenda neste período: a coleta começou agora, e cada novo no-show passa a ser registrado com o dia e o horário da reunião.'
-      : `% = no-shows ÷ reuniões marcadas naquele dia e turno · ${ns.identificados} no-show(s) cruzado(s) com a agenda` + (ns.naoIdentificados ? ` · ${ns.naoIdentificados} sem correspondência na agenda` : ''));
+    mS('sdNsInfo', '% = reuniões marcadas na agenda p/ aquele dia que não foram realizadas ÷ marcadas. '
+      + (temTurno
+        ? `Turnos contados desde ${sdDDMM(agenda.turno.desde)} (${agenda.turno.casadas} de ${agenda.turno.realizadasRegistradas} realizadas casadas com a agenda).`
+        : 'Turnos: começam a contar com as próximas reuniões realizadas — antes, o LeadForge guardou só quantas aconteceram no dia, não qual.'));
   }
 
   mS('sdStatus', 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));

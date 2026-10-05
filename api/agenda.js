@@ -130,42 +130,56 @@ export default async function handler(req, res) {
   primeiras.filter((e) => e.inicio >= ini && e.inicio < fim && e.inicio < agora)
     .forEach((e) => { const k = isoDia(e.inicio); porDia[k] = (porDia[k] || 0) + 1; });
 
-  // ── no-show por dia da semana × turno (no-shows gravados pelo webhook, casados com o evento)
-  const slots = {};
-  const slot = (t) => (slots[new Date(t).getUTCDay() + '-' + turno(t)] || (slots[new Date(t).getUTCDay() + '-' + turno(t)] = { reunioes: 0, noshow: 0 }));
-  primeiras.filter((e) => e.inicio >= ini && e.inicio < fim && e.inicio < agora).forEach((e) => { slot(e.inicio).reunioes++; });
-
+  // ── no-show por TURNO (manhã/tarde/noite) — a partir do 1º registro de reunião REALIZADA (rl:{mes}).
+  // Antes disso o LeadForge só guardou QUANTAS foram realizadas por dia, não QUAL; aí não dá p/ saber o turno.
+  // Cada realizada é casada com o evento da agenda (e-mail do convidado > nome ATUAL do lead > nome gravado).
+  // As que sobram sem casar são as faltas — limitadas, por dia, a (marcadas − realizadas) p/ bater com a tabela.
   const meses = [];
-  for (let d = new Date(ini); d.getTime() < fim; d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))) meses.push(d.toISOString().slice(0, 7));
+  for (let d = new Date(Date.UTC(new Date(ini).getUTCFullYear(), new Date(ini).getUTCMonth(), 1)); d.getTime() < fim; d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))) meses.push(d.toISOString().slice(0, 7));
   let registros = [];
   if (R_URL && R_TOKEN && meses.length) {
     try {
-      const listas = await redisPipe(meses.map((m) => ['LRANGE', `nsl:${m}`, 0, -1]));
-      registros = listas.flat().filter(Boolean).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
+      const listas = await redisPipe(meses.map((m) => ['LRANGE', `rl:${m}`, 0, -1]));
+      registros = listas.flat().filter(Boolean).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } })
+        .filter(Boolean).map((r) => ({ ...r, tt: Date.parse(r.t) - BR })).filter((r) => r.tt >= ini - 2 * DIA && r.tt < fim + DIA);
     } catch (e) { /* sem registros */ }
   }
-  let identificados = 0, naoIdentificados = 0, desde = null;
-  await Promise.all(registros.map(async (rec) => {
-    const t = Date.parse(rec.t) - BR;
-    if (!(t >= ini && t < fim + DIA)) return;
-    if (desde == null || t < desde) desde = t;
-    const atual = await leadAtual(rec);
-    const email = norm((atual && atual.email) || rec.email);
-    const nome = primeiroNome((atual && atual.full_name) || rec.nome);
-    // reunião mais recente antes da marcação do no-show (até 21 dias antes / 12h depois)
-    const cand = reunioes.filter((e) => e.inicio <= t + 12 * 3600 * 1000 && e.inicio >= t - 21 * DIA)
-      .sort((a, b) => b.inicio - a.inicio);
-    const ev = (email && cand.find((e) => e.emails.includes(email))) || (nome && cand.find((e) => e.nome === nome));
-    if (!ev) { naoIdentificados++; return; }
-    if (!(ev.inicio >= ini && ev.inicio < fim)) return;   // reunião fora do período (a taxa ficaria sem denominador)
-    identificados++;
-    slot(ev.inicio).noshow++;
-  }));
+  const slots = {};
+  const chave = (t) => new Date(t).getUTCDay() + '-' + turno(t);
+  const slot = (t) => (slots[chave(t)] || (slots[chave(t)] = { reunioes: 0, faltas: 0 }));
+  let turnoDesde = null, casadas = 0;
+  if (registros.length) {
+    const d0 = Math.min(...registros.map((r) => r.tt));
+    turnoDesde = Date.UTC(new Date(d0).getUTCFullYear(), new Date(d0).getUTCMonth(), new Date(d0).getUTCDate());
+    const evs = primeiras.filter((e) => e.inicio >= Math.max(ini, turnoDesde) && e.inicio < fim && e.inicio < agora);
+    const atuais = await Promise.all(registros.map((r) => leadAtual(r)));   // nome/e-mail de HOJE (o nome pode ter mudado)
+    const realizado = new Set(), rPorDia = {};
+    registros.slice().sort((a, b) => a.tt - b.tt).forEach((rec) => {
+      const i = registros.indexOf(rec), atual = atuais[i];
+      const dk = isoDia(rec.tt); rPorDia[dk] = (rPorDia[dk] || 0) + 1;
+      const email = norm((atual && atual.email) || rec.email);
+      const nomes = [primeiroNome(atual && atual.full_name), primeiroNome(rec.nome)].filter(Boolean);
+      // reunião mais recente antes de marcarem "realizada" (até 2 dias antes / 12h depois), ainda não usada
+      const cand = evs.filter((e) => !realizado.has(e) && e.inicio <= rec.tt + 12 * 3600 * 1000 && e.inicio >= rec.tt - 2 * DIA)
+        .sort((a, b) => b.inicio - a.inicio);
+      const ev = (email && cand.find((e) => e.emails.includes(email))) || cand.find((e) => nomes.includes(e.nome));
+      if (ev) { realizado.add(ev); casadas++; }
+    });
+    // por dia: faltas = marcadas − realizadas; distribuídas entre as reuniões que ficaram sem casar
+    const porDiaEv = {};
+    evs.forEach((e) => { (porDiaEv[isoDia(e.inicio)] = porDiaEv[isoDia(e.inicio)] || []).push(e); });
+    Object.entries(porDiaEv).forEach(([dk, lista]) => {
+      const soltas = lista.filter((e) => !realizado.has(e));
+      const faltas = Math.max(0, lista.length - (rPorDia[dk] || 0));
+      const peso = soltas.length ? Math.min(1, faltas / soltas.length) : 0;
+      lista.forEach((e) => { const s = slot(e.inicio); s.reunioes++; if (!realizado.has(e)) s.faltas += peso; });
+    });
+  }
 
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=600');
   return res.status(200).json({
     semanas,
     porDia,
-    noshow: { identificados, naoIdentificados, desde: desde != null ? isoDia(desde) : null, slots }
+    turno: { desde: turnoDesde != null ? isoDia(turnoDesde) : null, realizadasRegistradas: registros.length, casadas, slots }
   });
 }
