@@ -1906,7 +1906,7 @@ const SD_MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', '
 const SD_MES_LONGO = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const sdDiasNoMes = (data) => { const [y, m] = data.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).getUTCDate(); };
 const sdDDMM = (data) => data.slice(8, 10) + '/' + data.slice(5, 7);
-const sdPct = (v) => (v == null || !isFinite(v)) ? '—' : Math.round(v * 100) + '%';     // v = fração
+const sdPct = (v) => (v == null || !isFinite(v)) ? '—' : mP(v * 100);     // v = fração; até 2 casas, como o resto do painel
 const sdMes = (m) => SD_MES[+m.slice(5, 7) - 1];
 
 // filtro de mês da tabela ('' = últimas 8 semanas). Meses desde jul/2026 (início do registro diário)
