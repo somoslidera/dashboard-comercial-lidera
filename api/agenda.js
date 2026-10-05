@@ -124,6 +124,12 @@ export default async function handler(req, res) {
   }
   reunioes.filter((e) => e.retorno && e.inicio >= domingo(ini) && e.inicio < fim).forEach((e) => { sem(e.inicio).retornos++; });
 
+  // ── por DIA: 1ªs reuniões que estavam marcadas p/ aquele dia e cujo horário já passou
+  // (base do no-show "pela agenda": marcadas p/ acontecer − realizadas). Remarcada sai do dia antigo; cancelada não entra.
+  const porDia = {};
+  primeiras.filter((e) => e.inicio >= ini && e.inicio < fim && e.inicio < agora)
+    .forEach((e) => { const k = isoDia(e.inicio); porDia[k] = (porDia[k] || 0) + 1; });
+
   // ── no-show por dia da semana × turno (no-shows gravados pelo webhook, casados com o evento)
   const slots = {};
   const slot = (t) => (slots[new Date(t).getUTCDay() + '-' + turno(t)] || (slots[new Date(t).getUTCDay() + '-' + turno(t)] = { reunioes: 0, noshow: 0 }));
@@ -159,6 +165,7 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=600');
   return res.status(200).json({
     semanas,
+    porDia,
     noshow: { identificados, naoIdentificados, desde: desde != null ? isoDia(desde) : null, slots }
   });
 }

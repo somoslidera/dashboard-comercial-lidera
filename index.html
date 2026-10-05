@@ -522,7 +522,7 @@
       <h2>Semana a semana <span class="tag">DOM → SÁB</span> <span class="tag" id="sdFiltroTag" hidden></span></h2>
       <div class="sd-thead"><div>Semana</div><div>Leads</div><div>Desq.</div><div>Agend.</div><div>Tx. agend.</div><div>Marcou p/</div><div>Reuniões</div><div>No-show</div><div>Vendas</div><div>Tx. vendas</div></div>
       <div class="sd-tbody" id="sdSemanas"></div>
-      <div class="sd-legenda"><b>meta</b> = meta da semana (meta do mês ÷ dias do mês × dias da semana) · cor: verde no ritmo, dourado ≥ 80%, vermelho abaixo · <b>Marcou p/</b> = reuniões marcadas na semana (Google Agenda): p/ a mesma semana · p/ a seguinte · <b>No-show</b> = faltas ÷ (realizadas + faltas) · <b>Tx. vendas</b> = vendas ÷ reuniões realizadas</div>
+      <div class="sd-legenda"><b>meta</b> = meta da semana (meta do mês ÷ dias do mês × dias da semana) · cor: verde no ritmo, dourado ≥ 80%, vermelho abaixo · <b>Marcou p/</b> = reuniões marcadas na semana (Google Agenda): p/ a mesma semana · p/ a seguinte · <b>No-show</b> = <span id="sdLegNs">faltas ÷ (realizadas + faltas)</span> · <b>Tx. vendas</b> = vendas ÷ reuniões realizadas</div>
       <div class="sd-plano" id="sdPlano"></div>
     </div>
     <div class="sd-direita">
@@ -1957,6 +1957,16 @@ function renderSdr(j, agenda, agendaAtual) {
   const cor = (real, meta) => (!meta ? 'mut' : real >= meta ? 'ok' : real >= meta * 0.8 ? 'meio' : 'ruim');
   const temAgenda = (a) => !!(a && !a.erro && a.semanas);
   const semAg = (a, dom) => (temAgenda(a) && a.semanas[dom]) || null;
+  // NO-SHOW de um conjunto de dias. Com a agenda: reuniões marcadas p/ esses dias (horário já passado)
+  // que não aconteceram ÷ marcadas. Sem a agenda: faltas registradas no LeadForge ÷ (realizadas + faltas).
+  const noShow = (dias, R, N, ag) => {
+    if (temAgenda(ag) && ag.porDia) {
+      const marcadas = dias.reduce((s, d) => s + (ag.porDia[d.data] || 0), 0);
+      const faltas = Math.max(0, marcadas - R);
+      return { taxa: marcadas ? faltas / marcadas : null, faltas, base: marcadas };
+    }
+    return { taxa: (R + N) ? N / (R + N) : null, faltas: N, base: R + N };
+  };
 
   const atual = j.semanaAtual;
   const ateHoje = atual.filter((d) => !d.futuro);
@@ -1973,7 +1983,11 @@ function renderSdr(j, agenda, agendaAtual) {
   const wL = kpi('sdLeads', 'leads'), wA = kpi('sdAgend', 'agend'), wR = kpi('sdReun', 'reunioes');
   const wN = soma(ateHoje, 'noshow');
   mS('sdTaxa', wL ? sdPct(wA / wL) : '—');
-  mS('sdTaxaSub', 'no-show da semana: ' + ((wR + wN) ? sdPct(wN / (wR + wN)) : '—'));
+  document.getElementById('sdLegNs').innerHTML = (temAgenda(agenda) && agenda.porDia)
+    ? 'reuniões marcadas p/ a semana (Google Agenda) que não aconteceram ÷ marcadas — remarcadas e canceladas não contam'
+    : 'faltas registradas no LeadForge ÷ (realizadas + faltas) — ao conectar a Google Agenda, passa a ser marcadas p/ a semana que não aconteceram';
+  const nsW = noShow(ateHoje, wR, wN, agendaAtual);
+  mS('sdTaxaSub', 'no-show da semana: ' + sdPct(nsW.taxa) + (nsW.base ? ` (${nsW.faltas} de ${nsW.base})` : ''));
   const sa = semAg(agendaAtual, atual[0].data);
   mS('sdAgendAgenda', sa
     ? `na agenda: ${sa.mesma} p/ esta semana · ${sa.proxima} p/ a próxima${sa.depois ? ' · ' + sa.depois + ' depois' : ''}`
@@ -2005,7 +2019,10 @@ function renderSdr(j, agenda, agendaAtual) {
       + `<div class="c">${!semDado && L ? sdPct(A / L) : '—'}</div>`
       + `<div class="c" title="reuniões marcadas nesta semana (Google Agenda): p/ a mesma semana · p/ a seguinte">${ag ? `${ag.mesma} · ${ag.proxima}` : '—'}${ag && ag.depois ? `<span class="meta-l">+${ag.depois} depois</span>` : ''}</div>`
       + comMeta(R, 'reunioes')
-      + `<div class="c">${!semDado && (R + N) ? sdPct(N / (R + N)) : '—'}</div>`
+      + (() => {
+        const ns = noShow(vis, R, N, agenda);
+        return `<div class="c">${!semDado && ns.base ? sdPct(ns.taxa) + `<span class="meta-l">${ns.faltas} de ${ns.base}</span>` : '—'}</div>`;
+      })()
       + `<div class="c mut">${v(V)}</div>`
       + `<div class="c">${!semDado && R ? sdPct(V / R) : '—'}</div></div>`;
   }).join('');
