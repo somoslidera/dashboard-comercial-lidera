@@ -2061,12 +2061,28 @@ function renderSdr(j, agenda, agendaAtual) {
     mS('sdNsInfo', '');
   } else {
     const DIAS = [1, 2, 3, 4, 5, 6, 0];                    // Seg → Dom
+    // "Dia todo" (histórico): cada reunião marcada na agenda conta como realizada se houver uma "realizada"
+    // registrada no LeadForge no mesmo dia ou até JANELA dias depois (o SDR às vezes marca depois); senão, falta.
+    // Dias sem NENHUM registro no painel (ex.: apagão do Redis em ago/26) ficam de fora: não dá p/ saber se aconteceram.
+    // Reuniões dos últimos JANELA dias ainda podem ser marcadas → ficam pendentes (não entram).
+    const JANELA = 2, DIA_MS = 86400000;
     const diaTodo = {};
-    j.dias.filter((d) => d.noMes && !d.futuro && !d.semDado).forEach((d) => {
+    const soma1 = (dow, campo, n = 1) => { const c = diaTodo[dow] || (diaTodo[dow] = { reunioes: 0, faltas: 0 }); c[campo] += n; };
+    const semRegistro = (d) => !d.leads && !d.agend && !d.reunioes && !d.desq;
+    const fila = [];                                       // reuniões ainda sem "realizada"
+    j.dias.filter((d) => d.noMes && !d.semDado && d.data < j.hoje).forEach((d) => {
+      if (semRegistro(d)) return;
+      const t = Date.parse(d.data);
+      for (let k = fila.length - 1; k >= 0; k--) {        // passou da janela sem ser marcada → falta
+        if (t - fila[k].t > JANELA * DIA_MS) { soma1(fila[k].dow, 'faltas'); fila.splice(k, 1); }
+      }
       const marcadas = agenda.porDia[d.data] || 0;
-      if (!marcadas) return;
-      const c = diaTodo[d.dow] || (diaTodo[d.dow] = { reunioes: 0, faltas: 0 });
-      c.reunioes += marcadas; c.faltas += Math.max(0, marcadas - d.reunioes);
+      for (let s = 0; s < marcadas; s++) { fila.push({ t, dow: d.dow }); soma1(d.dow, 'reunioes'); }
+      for (let r = 0; r < d.reunioes && fila.length; r++) fila.pop();   // baixa as mais recentes primeiro
+    });
+    fila.forEach((f) => {
+      if (Date.parse(j.hoje) - f.t > JANELA * DIA_MS) soma1(f.dow, 'faltas');
+      else soma1(f.dow, 'reunioes', -1);                  // ainda pendente: não conta
     });
     const T = (agenda.turno && agenda.turno.slots) || {};
     const temTurno = !!(agenda.turno && agenda.turno.desde);
@@ -2084,7 +2100,7 @@ function renderSdr(j, agenda, agendaAtual) {
         + DIAS.map((d) => (temTurno ? cel(T[d + '-' + k]) : '<div class="cel vazia"><small>coletando</small></div>')).join('');
     });
     hm.innerHTML = html;
-    mS('sdNsInfo', '% = reuniões marcadas na agenda p/ aquele dia que não foram realizadas ÷ marcadas. '
+    mS('sdNsInfo', '% = reuniões marcadas na agenda p/ aquele dia sem "realizada" no LeadForge (mesmo dia ou até 2 dias depois) ÷ marcadas. Dias sem registro no painel (apagão de ago/26) ficam de fora. '
       + (temTurno
         ? `Turnos contados desde ${sdDDMM(agenda.turno.desde)} (${agenda.turno.casadas} de ${agenda.turno.realizadasRegistradas} realizadas casadas com a agenda).`
         : 'Turnos: começam a contar com as próximas reuniões realizadas — antes, o LeadForge guardou só quantas aconteceram no dia, não qual.'));
