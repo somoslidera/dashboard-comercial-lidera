@@ -257,6 +257,14 @@ export default async function handler(req, res) {
         if (await primeiraVez(mes, `noshow:${deal.id}`)) {
           await redis(['INCR', `n:${mes}`]);
           await redis(['INCR', `n:${dia}`]);
+          // guarda QUEM deu no-show (p/ cruzar com a agenda e achar o dia/horário da reunião).
+          // ID e telefone não mudam; o nome atual é buscado na leitura (o nome pode ser corrigido depois)
+          await redis(['RPUSH', `nsl:${mes}`, JSON.stringify({
+            t: deal.created_at || new Date().toISOString(), deal: deal.id || null,
+            lead: deal.lead_id || lead.id || null, email: lead.email || null,
+            fone: lead.phone || ((lead.remotejid || '').split('@')[0]) || null,
+            nome: lead.full_name || null, titulo: deal.title || null
+          })]);
         }
       }
     } else if ((evento === 'deal.closed' || evento === 'deal.lost') &&

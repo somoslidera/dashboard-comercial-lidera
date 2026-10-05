@@ -1,6 +1,8 @@
 // Guia SDR: controle semanal (domingo a sábado) + plano do mês derivado da meta de faturamento.
 // Endpoint isolado: não mexe no /api/dados (Comercial/Marketing).
-// Lê tudo num ÚNICO MGET (dias das últimas N semanas + meses de base) p/ poupar o Redis.
+// Lê tudo num ÚNICO MGET (dias da tabela + semana atual + meses) p/ poupar o Redis.
+//   /api/sdr            → últimas 8 semanas
+//   /api/sdr?mes=AAAA-MM → semanas (dom–sáb) que encostam no mês; dias fora do mês vêm com noMes=false
 import { autorizado } from './_auth.js';
 
 const R_URL = process.env.KV_REST_API_URL;
@@ -23,29 +25,42 @@ async function mget(keys) {
 const iso = (d) => d.toISOString().slice(0, 10);
 const addDias = (d, n) => new Date(d.getTime() + n * 86400000);
 const num = (v) => parseFloat(v || 0) || 0;
+const domingo = (d) => addDias(d, -d.getUTCDay());
+const intervalo = (ini, fim) => { const out = []; for (let d = ini; d <= fim; d = addDias(d, 1)) out.push(d); return out; };
 
 export default async function handler(req, res) {
   if (!autorizado(req)) return res.status(401).json({ erro: 'nao_autorizado' });
   if (!R_URL || !R_TOKEN) return res.status(500).json({ erro: 'Redis nao configurado' });
 
-  const semanas = Math.min(16, Math.max(1, parseInt((req.query || {}).semanas, 10) || 8));
+  const q = req.query || {};
+  const mesFiltro = /^\d{4}-\d{2}$/.test(q.mes || '') ? q.mes : null;
 
   // "hoje" no fuso do Brasil, como data pura (00:00 UTC do dia BR)
   const agora = new Date(Date.now() - 3 * 3600 * 1000);
   const hoje = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate()));
-  const inicioSemana = addDias(hoje, -hoje.getUTCDay());                 // domingo desta semana
-  const inicio = addDias(inicioSemana, -7 * (semanas - 1));
-  const dias = [];
-  for (let i = 0; i < semanas * 7; i++) dias.push(addDias(inicio, i));
+  const inicioSemana = domingo(hoje);
+  const semanaAtual = intervalo(inicioSemana, addDias(inicioSemana, 6));
 
-  // meses: 3 meses fechados (base das taxas) + o mês atual
+  // dias da tabela
+  let diasTabela;
+  if (mesFiltro) {
+    const [y, m] = mesFiltro.split('-').map(Number);
+    const primeiro = new Date(Date.UTC(y, m - 1, 1)), ultimo = new Date(Date.UTC(y, m, 0));
+    diasTabela = intervalo(domingo(primeiro), addDias(domingo(ultimo), 6));
+  } else {
+    diasTabela = intervalo(addDias(inicioSemana, -7 * 7), addDias(inicioSemana, 6));   // 8 semanas
+  }
+
+  // meses: 3 meses fechados (base das taxas), o mês de referência (filtrado ou atual)
   const mesStr = (k) => iso(new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() - k, 1))).slice(0, 7);
   const mesesBase = [3, 2, 1].map(mesStr);
-  const mesAtual = mesStr(0);
+  const mesRef = mesFiltro || mesStr(0);
 
+  // um único MGET com tudo (dias sem repetir)
+  const diasUnicos = [...new Set([...diasTabela, ...semanaAtual].map(iso))];
   const keys = [];
-  dias.forEach((d) => CAMPOS.forEach((c) => keys.push(`${c}:${iso(d)}`)));
-  [...mesesBase, mesAtual].forEach((m) => CAMPOS.forEach((c) => keys.push(`${c}:${m}`)));
+  diasUnicos.forEach((d) => CAMPOS.forEach((c) => keys.push(`${c}:${d}`)));
+  [...mesesBase, mesRef].forEach((m) => CAMPOS.forEach((c) => keys.push(`${c}:${m}`)));
 
   let r;
   try { r = await mget(keys); } catch (e) { return res.status(200).json({ erro: 'redis', detalhe: String(e) }); }
@@ -54,16 +69,21 @@ export default async function handler(req, res) {
     leads: num(r[off]), desq: num(r[off + 1]), agend: num(r[off + 2]), noshow: num(r[off + 3]),
     reunioes: num(r[off + 4]), vendas: num(r[off + 5]), valor: num(r[off + 6])
   });
+  const porDia = {};
+  diasUnicos.forEach((d, i) => { porDia[d] = ler(i * CAMPOS.length); });
 
   const hojeStr = iso(hoje);
-  const listaDias = dias.map((d, i) => {
+  const dia = (d) => {
     const data = iso(d);
-    return { data, dow: d.getUTCDay(), futuro: data > hojeStr, semDado: data < RASTREIO_DIARIO_INICIO, ...ler(i * CAMPOS.length) };
-  });
+    return {
+      data, dow: d.getUTCDay(), futuro: data > hojeStr, semDado: data < RASTREIO_DIARIO_INICIO,
+      noMes: !mesFiltro || data.slice(0, 7) === mesFiltro, ...porDia[data]
+    };
+  };
 
-  const offMes = dias.length * CAMPOS.length;
+  const offMes = diasUnicos.length * CAMPOS.length;
   const base = mesesBase.map((m, i) => ({ mes: m, ...ler(offMes + i * CAMPOS.length) }));
-  const atual = { mes: mesAtual, ...ler(offMes + mesesBase.length * CAMPOS.length) };
+  const ref = { mes: mesRef, ...ler(offMes + mesesBase.length * CAMPOS.length) };
 
   // plano reverso: meta R$ → vendas → reuniões → agendamentos → leads, c/ as taxas reais dos 3 meses
   const s = base.reduce((a, m) => { Object.keys(a).forEach((k) => { a[k] += m[k]; }); return a; },
@@ -85,8 +105,10 @@ export default async function handler(req, res) {
   return res.status(200).json({
     hoje: hojeStr,
     rastreioDiarioInicio: RASTREIO_DIARIO_INICIO,
-    dias: listaDias,
-    mesAtual: atual,
+    filtroMes: mesFiltro,
+    dias: diasTabela.map(dia),
+    semanaAtual: semanaAtual.map(dia),
+    mesRef: ref,
     plano: { metaFaturamento: META_FATURAMENTO, base: mesesBase, taxas, mensal: { vendas, reunioes, agend, leads } }
   });
 }

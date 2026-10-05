@@ -113,7 +113,7 @@ async function adsIdViaLead(leadId) {
 // funil por ANÚNCIO (ads_id) de um mês "YYYY-MM": mesmas etapas, agrupadas por ad:{deal.id}.
 // O ads_id é o id do anúncio no Facebook (custom_fields.ads_id do lead, capturado no webhook).
 // Devolve { [adsId]: { leads, mql, sql, reunioes, vendas, faturamento } }. Forward-only.
-async function porAnuncioDoMes(mes) {
+async function porAnuncioDoMes(mes, faixa) {
   const base = await pipeline([
     ['SMEMBERS', `fxs:l:${mes}`],
     ['SMEMBERS', `fxs:sql:${mes}`],
@@ -151,12 +151,21 @@ async function porAnuncioDoMes(mes) {
     if (sets.length) await pipeline(sets);
   }
 
+  // filtro de faixa (f1..f6): só conta negociações cuja faixa ATUAL é a pedida
+  let naFaixa = () => true;
+  if (faixa) {
+    const bandas = (await pipeline([['MGET', ...ids.map((id) => `banda:${id}`)]]))[0] || [];
+    const bandaDe = {};
+    ids.forEach((id, i) => { bandaDe[id] = bandas[i]; });
+    naFaixa = (id) => bandaDe[id] === faixa;
+  }
+
   const real = (a) => a && a !== '_';
   const acc = {};
   const bucket = (a) => (acc[a] || (acc[a] = { leads: 0, desq: 0, sql: 0, reunioes: 0, vendas: 0, faturamento: 0 }));
-  const contar = (set, campo) => set.forEach((id) => { const a = adDe[id]; if (real(a)) bucket(a)[campo]++; });
+  const contar = (set, campo) => set.forEach((id) => { const a = adDe[id]; if (real(a) && naFaixa(id)) bucket(a)[campo]++; });
   contar(setL, 'leads'); contar(setSql, 'sql'); contar(setR, 'reunioes'); contar(setD, 'desq');
-  setV.forEach((id) => { const a = adDe[id]; if (real(a)) { const b = bucket(a); b.vendas++; b.faturamento += vendaMap[id]; } });
+  setV.forEach((id) => { const a = adDe[id]; if (real(a) && naFaixa(id)) { const b = bucket(a); b.vendas++; b.faturamento += vendaMap[id]; } });
 
   const out = {};
   Object.keys(acc).forEach((a) => { const x = acc[a]; out[a] = { leads: x.leads, mql: Math.max(0, x.leads - x.desq), sql: x.sql, reunioes: x.reunioes, vendas: x.vendas, faturamento: x.faturamento }; });
@@ -219,7 +228,8 @@ export default async function handler(req, res) {
   // funil por anúncio (ads_id) de um mês específico
   if (q.anunciosMes) {
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=300');
-    return res.status(200).json({ mes: q.anunciosMes, porAnuncio: await porAnuncioDoMes(q.anunciosMes) });
+    const faixa = /^f[1-6]$/.test(q.faixa || '') ? q.faixa : '';
+    return res.status(200).json({ mes: q.anunciosMes, faixa: faixa || null, porAnuncio: await porAnuncioDoMes(q.anunciosMes, faixa) });
   }
 
   // período personalizado por DIA (a partir de RASTREIO_DIARIO_INICIO)

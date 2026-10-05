@@ -254,35 +254,48 @@
   .sd-bar i{display:block;height:100%;width:0;border-radius:100px;background:linear-gradient(90deg,var(--gold),var(--gold-soft));transition:width 1.2s cubic-bezier(.22,1,.36,1)}
   .sd-bar i.ok{background:linear-gradient(90deg,#3fbf8f,#8ff0cf)}
   .sd-bar i.ruim{background:linear-gradient(90deg,#c0504d,#f08f8f)}
-  .sd-thead,.sd-row{display:grid;grid-template-columns:1.55fr repeat(7,1fr);gap:6px;align-items:center}
-  .sd-thead{color:var(--text-3);font-size:clamp(8px,1vh,11px);font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:0 clamp(8px,1vw,14px) 6px;border-bottom:1px solid var(--line)}
+  .sd-kpi-extra{color:var(--gold-soft);font-size:clamp(9px,1.15vh,12px);font-weight:700;min-height:1em}
+  .sd-body{flex:1;display:grid;grid-template-columns:1.6fr 1fr;gap:var(--gap);min-height:0}
+  .sd-direita{display:grid;grid-template-rows:1fr 1fr;gap:var(--gap);min-height:0}
+  .sd-thead,.sd-row{display:grid;grid-template-columns:1.3fr repeat(9,1fr);gap:6px;align-items:center}
+  .sd-thead{color:var(--text-3);font-size:clamp(8px,1vh,11px);font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:0 clamp(8px,1vw,14px) 6px;border-bottom:1px solid var(--line)}
   .sd-thead div:not(:first-child),.sd-row .c{text-align:right}
-  .sd-tbody{flex:1;display:flex;flex-direction:column;gap:clamp(3px,.6vh,8px);min-height:0;overflow:hidden;margin-top:clamp(4px,.7vh,9px)}
-  .sd-row{flex:1;max-height:64px;min-height:0;background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:10px;padding:0 clamp(8px,1vw,14px)}
+  .sd-tbody{flex:1;display:flex;flex-direction:column;gap:clamp(3px,.5vh,7px);min-height:0;overflow:hidden;margin-top:clamp(4px,.7vh,9px)}
+  .sd-row{flex:1;max-height:62px;min-height:0;background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:10px;padding:0 clamp(8px,1vw,14px)}
   .sd-row.atual{border-color:rgba(203,167,94,.45);background:rgba(203,167,94,.06)}
   .sd-row .sem{font-weight:600;font-size:clamp(10px,1.35vh,15px);white-space:nowrap}
-  .sd-row .sem small{display:block;color:var(--gold);font-size:.7em;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
-  .sd-row .c{font-variant-numeric:tabular-nums;font-size:clamp(11px,1.45vh,16px);font-weight:600;white-space:nowrap}
-  .sd-row .c small{color:var(--text-3);font-weight:600;font-size:.75em}
+  .sd-row .sem small{display:block;color:var(--gold);font-size:.68em;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+  .sd-row .sem small.parc{color:var(--text-3)}
+  .sd-row .c{font-variant-numeric:tabular-nums;font-size:clamp(11px,1.45vh,16px);font-weight:600;white-space:nowrap;line-height:1.15}
+  .sd-row .meta-l{display:block;font-size:.64em;color:var(--text-3);font-weight:600}
   .sd-row .ok{color:#8ff0cf}.sd-row .meio{color:var(--gold-soft)}.sd-row .ruim{color:#f08f8f}.sd-row .mut{color:var(--text-2)}
   .sd-ritmo{flex:1;display:grid;grid-template-columns:repeat(7,1fr);gap:clamp(6px,.8vw,14px);min-height:0}
-  .sd-dia{display:flex;flex-direction:column;align-items:center;gap:5px;min-height:0}
-  .sd-col{position:relative;flex:1;width:100%;max-width:72px;display:flex;align-items:flex-end;min-height:0}
-  .sd-col .b{width:100%;border-radius:9px 9px 4px 4px;background:linear-gradient(180deg,var(--gold-soft),var(--gold));transition:height 1.2s cubic-bezier(.22,1,.36,1)}
+  .sd-dia{display:flex;flex-direction:column;align-items:center;gap:4px;min-height:0}
+  .sd-col{position:relative;flex:1;width:100%;max-width:64px;display:flex;align-items:flex-end;min-height:0}
+  .sd-col .b{width:100%;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,var(--gold-soft),var(--gold));transition:height 1.2s cubic-bezier(.22,1,.36,1)}
   .sd-col .meta{position:absolute;left:-4px;right:-4px;border-top:2px dashed rgba(143,240,207,.75)}
-  .sd-dia .n{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(14px,2vh,22px);line-height:1}
-  .sd-dia .d{color:var(--text-2);font-weight:800;font-size:clamp(9px,1.1vh,12px);letter-spacing:.1em;text-transform:uppercase}
-  .sd-dia .l{color:var(--text-3);font-size:clamp(8px,1vh,11px);font-weight:600;white-space:nowrap}
+  .sd-dia .n{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(13px,1.8vh,20px);line-height:1}
+  .sd-dia .d{color:var(--text-2);font-weight:800;font-size:clamp(8px,1vh,11px);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+  .sd-dia .l{color:var(--text-3);font-size:clamp(8px,.95vh,10px);font-weight:600;white-space:nowrap}
   .sd-dia.hoje .d{color:var(--gold)}
   .sd-dia.futuro{opacity:.35}
-  .sd-legenda{color:var(--text-3);font-size:clamp(8px,1vh,11px);font-weight:600;margin-top:clamp(6px,.9vh,10px)}
-  .sd-plano{flex:0 0 auto;margin-top:clamp(10px,1.4vh,16px);border-top:1px solid var(--line);padding-top:clamp(10px,1.4vh,16px);display:flex;flex-direction:column;gap:clamp(4px,.7vh,8px)}
+  .sd-legenda{color:var(--text-3);font-size:clamp(8px,1vh,11px);font-weight:600;margin-top:clamp(6px,.9vh,10px);line-height:1.45}
+  .sd-legenda b{color:var(--text-2)}
+  .sd-plano{flex:0 0 auto;margin-top:clamp(8px,1.1vh,14px);border-top:1px solid var(--line);padding-top:clamp(8px,1.1vh,14px);display:flex;flex-direction:column;gap:clamp(3px,.5vh,6px)}
   .sd-plano .tit{color:var(--gold);font-size:clamp(8px,1vh,11px);font-weight:800;letter-spacing:.14em;text-transform:uppercase}
   .sd-plano .cad{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;font-size:clamp(11px,1.45vh,16px);color:var(--text-2)}
   .sd-plano .cad b{font-family:'Fraunces',serif;color:var(--gold-soft);font-size:1.3em;font-weight:600}
   .sd-plano .cad .seta{color:var(--text-3)}
   .sd-plano .info{color:var(--text-2);font-size:clamp(9px,1.15vh,12px)}
   .sd-plano .info strong{color:var(--text)}
+  .sd-heat{flex:1;display:grid;grid-template-columns:auto repeat(7,1fr);grid-template-rows:auto repeat(3,1fr);gap:clamp(3px,.5vh,6px);min-height:0}
+  .sd-heat .hd{text-align:center;color:var(--text-2);font-weight:800;font-size:clamp(8px,1vh,11px);letter-spacing:.08em;text-transform:uppercase}
+  .sd-heat .tl{display:flex;align-items:center;color:var(--text-2);font-weight:700;font-size:clamp(9px,1.1vh,12px);padding-right:6px}
+  .sd-heat .cel{border-radius:8px;border:1px solid var(--line);background:rgb(240 143 143 / calc(var(--a,0) * .55));display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0;line-height:1.1}
+  .sd-heat .cel b{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(12px,1.7vh,19px)}
+  .sd-heat .cel small{color:var(--text-2);font-size:clamp(8px,.95vh,10px);font-weight:600}
+  .sd-heat .cel.vazia{color:var(--text-3);background:rgba(255,255,255,.02)}
+  .sd-vazio{grid-column:1/-1;grid-row:1/-1;display:grid;place-items:center;text-align:center;color:var(--text-2);font-size:clamp(10px,1.3vh,14px);padding:0 10%}
 </style>
 </head>
 <body>
@@ -412,22 +425,7 @@
         </select>
       </div>
       <div class="mes-filtro-wrap">
-        <select class="mes-filtro" id="mktFiltro" aria-label="Período"></select>
-      </div>
-    </div>
-  </header>
-
-  <section class="mkt-kpis">
-    <div class="card mkt-kpi"><div class="mk-top"><span class="mk-ic">💰</span>Investido</div><div class="mk-val" id="mkInvest">—</div><div class="mk-sub" id="mkInvestSub">no mês</div></div>
-    <div class="card mkt-kpi destaque"><div class="mk-top"><span class="mk-ic">🎯</span>Leads gerados</div><div class="mk-val" id="mkLeads">—</div><div class="mk-sub">campanhas [PLL]</div></div>
-    <div class="card mkt-kpi"><div class="mk-top"><span class="mk-ic">🏷️</span>CPL</div><div class="mk-val" id="mkCpl">—</div><div class="mk-sub">custo por lead</div></div>
-    <div class="card mkt-kpi"><div class="mk-top"><span class="mk-ic">👆</span>CTR</div><div class="mk-val" id="mkCtr">—</div><div class="mk-sub" id="mkCtrSub">taxa de clique</div></div>
-  </section>
-
-  <section class="mkt-body">
-    <div class="card mkt-panel">
-      <h2>Funil de conversão
-        <select id="mktFaixa" class="mkt-nivel" aria-label="Filtrar por faixa">
+        <select class="mes-filtro" id="mktFaixa" aria-label="Filtrar por faixa de faturamento">
           <option value="">Todas as faixas</option>
           <option value="f1">Até 50k</option>
           <option value="f2">50k - 80k</option>
@@ -436,7 +434,23 @@
           <option value="f5">150k - 300k</option>
           <option value="f6">Acima 300k</option>
         </select>
-      </h2>
+      </div>
+      <div class="mes-filtro-wrap">
+        <select class="mes-filtro" id="mktFiltro" aria-label="Período"></select>
+      </div>
+    </div>
+  </header>
+
+  <section class="mkt-kpis">
+    <div class="card mkt-kpi"><div class="mk-top"><span class="mk-ic">💰</span>Investido</div><div class="mk-val" id="mkInvest">—</div><div class="mk-sub" id="mkInvestSub">no mês</div></div>
+    <div class="card mkt-kpi destaque"><div class="mk-top"><span class="mk-ic">🎯</span>Leads gerados</div><div class="mk-val" id="mkLeads">—</div><div class="mk-sub" id="mkLeadsSub">campanhas [PLL]</div></div>
+    <div class="card mkt-kpi"><div class="mk-top"><span class="mk-ic">🏷️</span>CPL</div><div class="mk-val" id="mkCpl">—</div><div class="mk-sub" id="mkCplSub">custo por lead</div></div>
+    <div class="card mkt-kpi"><div class="mk-top"><span class="mk-ic">👆</span>CTR</div><div class="mk-val" id="mkCtr">—</div><div class="mk-sub" id="mkCtrSub">taxa de clique</div></div>
+  </section>
+
+  <section class="mkt-body">
+    <div class="card mkt-panel">
+      <h2>Funil de conversão <span class="tag" id="mktFaixaTag" hidden></span></h2>
       <div class="mkt-funil">
         <div class="mkt-etapa mkt-e1"><div class="barra"><div class="lbl">Leads gerados<small>CRM</small></div><div class="mkt-nc"><div class="n" id="mkfLeads">—</div><div class="mkt-custo" id="mkcLeads"></div></div></div></div>
         <div class="mkt-conv"><span class="arrow">▾</span> <span class="pct" id="mkcvMql">—</span> viram MQL</div>
@@ -490,27 +504,38 @@
           <option value="sdr">SDR</option>
         </select>
       </div>
+      <div class="mes-filtro-wrap">
+        <select class="mes-filtro" id="sdMes" aria-label="Mês da tabela"></select>
+      </div>
     </div>
   </header>
 
   <section class="mkt-kpis">
     <div class="card mkt-kpi"><div class="mk-top"><span class="mk-ic">📥</span>Leads na semana</div><div class="mk-val" id="sdLeads">—</div><div class="sd-bar"><i id="sdLeadsBar"></i></div><div class="mk-sub" id="sdLeadsSub">—</div></div>
-    <div class="card mkt-kpi destaque"><div class="mk-top"><span class="mk-ic">📅</span>Agendamentos na semana</div><div class="mk-val" id="sdAgend">—</div><div class="sd-bar"><i id="sdAgendBar"></i></div><div class="mk-sub" id="sdAgendSub">—</div></div>
+    <div class="card mkt-kpi destaque"><div class="mk-top"><span class="mk-ic">📅</span>Agendamentos na semana</div><div class="mk-val" id="sdAgend">—</div><div class="sd-bar"><i id="sdAgendBar"></i></div><div class="mk-sub" id="sdAgendSub">—</div><div class="sd-kpi-extra" id="sdAgendAgenda"></div></div>
     <div class="card mkt-kpi"><div class="mk-top"><span class="mk-ic">🤝</span>Reuniões realizadas</div><div class="mk-val" id="sdReun">—</div><div class="sd-bar"><i id="sdReunBar"></i></div><div class="mk-sub" id="sdReunSub">—</div></div>
-    <div class="card mkt-kpi"><div class="mk-top"><span class="mk-ic">🎯</span>Taxa de agendamento</div><div class="mk-val" id="sdTaxa">—</div><div class="mk-sub" id="sdTaxaSub">agendamentos ÷ leads da semana</div></div>
+    <div class="card mkt-kpi"><div class="mk-top"><span class="mk-ic">🎯</span>Taxa de agendamento</div><div class="mk-val" id="sdTaxa">—</div><div class="mk-sub">agendamentos ÷ leads da semana</div><div class="sd-kpi-extra" id="sdTaxaSub"></div></div>
   </section>
 
-  <section class="mkt-body">
+  <section class="sd-body">
     <div class="card mkt-panel">
-      <h2>Semana a semana <span class="tag">DOM → SÁB</span></h2>
-      <div class="sd-thead"><div>Semana</div><div>Leads</div><div>Desq.</div><div>Agend.</div><div>Tx. agend.</div><div>Reuniões</div><div>Compar.</div><div>Vendas</div></div>
+      <h2>Semana a semana <span class="tag">DOM → SÁB</span> <span class="tag" id="sdFiltroTag" hidden></span></h2>
+      <div class="sd-thead"><div>Semana</div><div>Leads</div><div>Desq.</div><div>Agend.</div><div>Tx. agend.</div><div>Marcou p/</div><div>Reuniões</div><div>No-show</div><div>Vendas</div><div>Tx. vendas</div></div>
       <div class="sd-tbody" id="sdSemanas"></div>
-    </div>
-    <div class="card mkt-panel">
-      <h2>Ritmo desta semana <span class="tag" id="sdSemanaTag">—</span></h2>
-      <div class="sd-ritmo" id="sdRitmo"></div>
-      <div class="sd-legenda">Barra = agendamentos do dia · tracejado = meta diária · embaixo, leads recebidos</div>
+      <div class="sd-legenda"><b>meta</b> = meta da semana (meta do mês ÷ dias do mês × dias da semana) · cor: verde no ritmo, dourado ≥ 80%, vermelho abaixo · <b>Marcou p/</b> = reuniões marcadas na semana (Google Agenda): p/ a mesma semana · p/ a seguinte · <b>No-show</b> = faltas ÷ (realizadas + faltas) · <b>Tx. vendas</b> = vendas ÷ reuniões realizadas</div>
       <div class="sd-plano" id="sdPlano"></div>
+    </div>
+    <div class="sd-direita">
+      <div class="card mkt-panel">
+        <h2>Ritmo desta semana <span class="tag" id="sdSemanaTag">—</span></h2>
+        <div class="sd-ritmo" id="sdRitmo"></div>
+        <div class="sd-legenda">Barra = agendamentos do dia · tracejado = meta diária · embaixo, leads recebidos</div>
+      </div>
+      <div class="card mkt-panel">
+        <h2>No-show por dia e turno <span class="tag" id="sdNsTag">—</span></h2>
+        <div class="sd-heat" id="sdHeat"></div>
+        <div class="sd-legenda" id="sdNsInfo"></div>
+      </div>
     </div>
   </section>
 
@@ -1600,9 +1625,14 @@ function mesesDoPeriodoMkt() {
   return [(p.mes != null) ? p.mes : mesAtualBR()];
 }
 
-// filtro de faixa do funil ('' = todas; f1..f6)
+// filtro de faixa ('' = todas; f1..f6) — fica no topo e vale p/ o painel inteiro (cards, funil e ranking)
 let mktFaixa = '';
-document.getElementById('mktFaixa').addEventListener('change', (e) => { mktFaixa = e.target.value; atualizarFunilMkt(); });
+document.getElementById('mktFaixa').addEventListener('change', (e) => {
+  mktFaixa = e.target.value;
+  atualizarFunilMkt();
+  renderRankingMkt(window.ultimoFb);
+});
+const nomeFaixaMkt = () => { const s = document.getElementById('mktFaixa'); return s.options[s.selectedIndex].text; };
 
 // soma o porFaixa (TODAS as faixas) dos meses do período → { f1:{...}, f2:{...}, ... }
 async function porFaixaDoPeriodo() {
@@ -1622,9 +1652,12 @@ async function porFaixaDoPeriodo() {
 }
 
 // funil: Leads(CRM) → MQL → SQL(≥50k) → Reuniões agendadas → Reuniões → Vendas, com custo (investido ÷ etapa)
+let funilMktSeq = 0;
 async function atualizarFunilMkt() {
+  const seq = ++funilMktSeq;                          // se trocarem a faixa no meio, a resposta antiga é descartada
   const crm = window.ultimoDados, fb = window.ultimoFb;
   const pf = await porFaixaDoPeriodo();               // por faixa (p/ SQL ≥50k)
+  if (seq !== funilMktSeq) return;
   let leads = 0, mql = 0, sql = 0, agend = 0, reunioes = 0, vendas = 0, temDados = false;
   if (mktFaixa) {                                     // uma faixa
     const a = pf[mktFaixa] || {};
@@ -1646,6 +1679,21 @@ async function atualizarFunilMkt() {
   mS('mkcvAgend', pc(leads, agend));   // % sobre Leads gerados
   mS('mkcvReuniao', pc(agend, reunioes));
   mS('mkcvVenda', pc(reunioes, vendas));
+
+  // cards do topo acompanham a faixa. O Facebook não separa gasto por faixa:
+  // investido e CTR seguem totais; leads e CPL passam a ser da faixa (CPL = investido ÷ leads da faixa)
+  const tag = document.getElementById('mktFaixaTag');
+  tag.hidden = !mktFaixa; tag.textContent = mktFaixa ? nomeFaixaMkt() : '';
+  const t = fb && fb.totais;
+  if (mktFaixa) {
+    mS('mkLeads', val(leads)); mS('mkLeadsSub', 'faixa ' + nomeFaixaMkt() + ' · CRM');
+    mS('mkCpl', inv != null && leads > 0 ? mBRL(inv / leads) : '—'); mS('mkCplSub', 'investido ÷ leads da faixa');
+    if (t) mS('mkInvestSub', 'total · o Facebook não separa por faixa');
+  } else if (t) {
+    mS('mkLeads', mN(t.leads)); mS('mkLeadsSub', 'campanhas [PLL]');
+    mS('mkCpl', mBRL(t.cpl)); mS('mkCplSub', 'custo por lead');
+    mS('mkInvestSub', mN((fb.campanhas || []).length) + ' campanha(s) ativa(s)');
+  }
 }
 
 async function carregarMarketing() {
@@ -1707,14 +1755,14 @@ function popularCampanhasMkt(campanhas) {
 // soma o porAnuncio dos meses do período: { adsId: { leads, reunioes, vendas, ... } }
 let crmAdCache = { key: null, val: null };
 async function porAnuncioDoPeriodo() {
-  const key = mktQuery();
+  const key = mktQuery() + '|' + mktFaixa;           // o filtro de faixa também muda o resultado
   if (crmAdCache.key === key && crmAdCache.val) return crmAdCache.val;
   const ano = new Date(Date.now() - 3 * 3600 * 1000).getUTCFullYear();
   const acc = {};
   for (const i of mesesDoPeriodoMkt()) {
     const mesStr = `${ano}-${String(i + 1).padStart(2, '0')}`;
     try {
-      const r = await fetch('/api/dados?anunciosMes=' + mesStr + '&t=' + Date.now(), { cache: 'no-store' });
+      const r = await fetch('/api/dados?anunciosMes=' + mesStr + (mktFaixa ? '&faixa=' + mktFaixa : '') + '&t=' + Date.now(), { cache: 'no-store' });
       if (r.status === 401) { location.href = '/login.html'; return acc; }
       const pa = (await r.json()).porAnuncio || {};
       Object.keys(pa).forEach((ad) => {
@@ -1837,7 +1885,7 @@ document.getElementById('ppAplicar').addEventListener('click', async () => {
 
 /* ═══════════════════════════════════════════════════════════
    PAINEL DO SDR — controle semanal (domingo a sábado)
-   Isolado: lê só /api/sdr e só mexe nos elementos #sd*.
+   Isolado: lê só /api/sdr e /api/agenda e só mexe nos elementos #sd*.
    ═══════════════════════════════════════════════════════════ */
 VIEWS.sdr = document.getElementById('viewSdr');
 document.querySelectorAll('.view-select').forEach((s) => {
@@ -1855,32 +1903,62 @@ trocarView = function (v) {
 
 const SD_DOW = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const SD_MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const SD_MES_LONGO = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const sdDiasNoMes = (data) => { const [y, m] = data.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).getUTCDate(); };
 const sdDDMM = (data) => data.slice(8, 10) + '/' + data.slice(5, 7);
 const sdPct = (v) => (v == null || !isFinite(v)) ? '—' : Math.round(v * 100) + '%';     // v = fração
 const sdMes = (m) => SD_MES[+m.slice(5, 7) - 1];
 
+// filtro de mês da tabela ('' = últimas 8 semanas). Meses desde jul/2026 (início do registro diário)
+let sdMesFiltro = '';
+(function popularMesesSdr() {
+  const sel = document.getElementById('sdMes');
+  const agora = new Date(Date.now() - 3 * 3600 * 1000);
+  let y = agora.getUTCFullYear(), m = agora.getUTCMonth();
+  const ops = ['<option value="">Últimas 8 semanas</option>'];
+  while (y > 2026 || (y === 2026 && m >= 6)) {
+    ops.push(`<option value="${y}-${String(m + 1).padStart(2, '0')}">${SD_MES_LONGO[m]} ${y}</option>`);
+    if (--m < 0) { m = 11; y--; }
+  }
+  sel.innerHTML = ops.join('');
+  sel.addEventListener('change', () => { sdMesFiltro = sel.value; carregarSdr(); });
+})();
+
+let sdrSeq = 0;
 async function carregarSdr() {
+  const seq = ++sdrSeq;                       // trocou o filtro no meio? a resposta antiga é descartada
   let j = null;
   try {
-    const r = await fetch('/api/sdr', { cache: 'no-store' });   // URL fixa: o cache da Vercel segura e poupa o Redis
+    // URL fixa (sem carimbo de hora): o cache da Vercel segura e poupa o Redis
+    const r = await fetch('/api/sdr' + (sdMesFiltro ? '?mes=' + sdMesFiltro : ''), { cache: 'no-store' });
     if (r.status === 401) { location.href = '/login.html'; return; }
     j = await r.json();
   } catch (e) { mS('sdStatus', 'Sem conexão com os dados — tentando novamente…'); return; }
+  if (seq !== sdrSeq) return;
   if (!j || j.erro || !Array.isArray(j.dias)) { mS('sdStatus', 'Falha ao ler os dados' + (j && j.detalhe ? ': ' + j.detalhe : '')); return; }
-  renderSdr(j);
+
+  // agenda (opcional): período da tabela + a semana atual, se ela não estiver na tabela
+  const agendaDe = async (a, b) => {
+    try { const r = await fetch(`/api/agenda?ini=${a}&fim=${b}`, { cache: 'no-store' }); return await r.json(); }
+    catch (e) { return { erro: 'agenda_inacessivel' }; }
+  };
+  const ini = j.dias[0].data, fim = j.dias[j.dias.length - 1].data, semIni = j.semanaAtual[0].data;
+  const agenda = await agendaDe(ini, fim);
+  const agendaAtual = (semIni >= ini && semIni <= fim) ? agenda : await agendaDe(semIni, j.semanaAtual[6].data);
+  if (seq !== sdrSeq) return;
+  renderSdr(j, agenda, agendaAtual);
 }
 
-function renderSdr(j) {
+function renderSdr(j, agenda, agendaAtual) {
   const P = j.plano.mensal;
   const metaDia = (data, k) => (P[k] != null ? P[k] / sdDiasNoMes(data) : 0);
   const soma = (ds, k) => ds.reduce((s, d) => s + (d[k] || 0), 0);
   const somaMeta = (ds, k) => ds.reduce((s, d) => s + metaDia(d.data, k), 0);
   const cor = (real, meta) => (!meta ? 'mut' : real >= meta ? 'ok' : real >= meta * 0.8 ? 'meio' : 'ruim');
+  const temAgenda = (a) => !!(a && !a.erro && a.semanas);
+  const semAg = (a, dom) => (temAgenda(a) && a.semanas[dom]) || null;
 
-  const semanas = [];
-  for (let i = 0; i < j.dias.length; i += 7) semanas.push(j.dias.slice(i, i + 7));
-  const atual = semanas[semanas.length - 1];
+  const atual = j.semanaAtual;
   const ateHoje = atual.filter((d) => !d.futuro);
 
   // ── KPIs da semana atual (domingo → hoje), com barra contra a meta da semana inteira
@@ -1895,26 +1973,41 @@ function renderSdr(j) {
   const wL = kpi('sdLeads', 'leads'), wA = kpi('sdAgend', 'agend'), wR = kpi('sdReun', 'reunioes');
   const wN = soma(ateHoje, 'noshow');
   mS('sdTaxa', wL ? sdPct(wA / wL) : '—');
-  mS('sdTaxaSub', 'comparecimento da semana: ' + ((wR + wN) ? sdPct(wR / (wR + wN)) : '—'));
+  mS('sdTaxaSub', 'no-show da semana: ' + ((wR + wN) ? sdPct(wN / (wR + wN)) : '—'));
+  const sa = semAg(agendaAtual, atual[0].data);
+  mS('sdAgendAgenda', sa
+    ? `na agenda: ${sa.mesma} p/ esta semana · ${sa.proxima} p/ a próxima${sa.depois ? ' · ' + sa.depois + ' depois' : ''}`
+    : (agendaAtual && agendaAtual.erro === 'sem_agenda' ? 'agenda ainda não conectada' : ''));
 
-  // ── Semana a semana (mais recente em cima)
+  // ── Semana a semana (mais recente em cima). Com filtro de mês, só soma os dias do mês.
+  const tagF = document.getElementById('sdFiltroTag');
+  tagF.hidden = !j.filtroMes; tagF.textContent = j.filtroMes ? SD_MES_LONGO[+j.filtroMes.slice(5, 7) - 1] : '';
+  const semanas = [];
+  for (let i = 0; i < j.dias.length; i += 7) semanas.push(j.dias.slice(i, i + 7));
   document.getElementById('sdSemanas').innerHTML = semanas.slice().reverse().map((ds) => {
-    const vis = ds.filter((d) => !d.futuro);
-    const semDado = ds.every((d) => d.semDado);
-    const eAtual = ds === atual;
+    const doMes = ds.filter((d) => d.noMes);
+    const vis = doMes.filter((d) => !d.futuro);
+    const semDado = doMes.every((d) => d.semDado);
+    const eAtual = ds[0].data === atual[0].data;
     const L = soma(vis, 'leads'), D = soma(vis, 'desq'), A = soma(vis, 'agend'), R = soma(vis, 'reunioes'), N = soma(vis, 'noshow'), V = soma(vis, 'vendas');
-    const mA = Math.round(somaMeta(ds, 'agend')), mR = Math.round(somaMeta(ds, 'reunioes'));
     const v = (x) => (semDado ? '—' : mN(x));
-    const meta = (m) => (m ? ` <small>/ ${m}</small>` : '');
+    const comMeta = (real, k) => {
+      const m = Math.round(somaMeta(doMes, k));
+      return `<div class="c ${semDado ? '' : cor(real, somaMeta(vis, k))}">${v(real)}${m ? `<span class="meta-l">meta ${m}</span>` : ''}</div>`;
+    };
+    const ag = semAg(agenda, ds[0].data);
+    const rotulo = eAtual ? '<small>em andamento</small>' : (doMes.length < 7 ? '<small class="parc">parcial</small>' : '');
     return `<div class="sd-row${eAtual ? ' atual' : ''}">`
-      + `<div class="sem">${sdDDMM(ds[0].data)} – ${sdDDMM(ds[6].data)}${eAtual ? '<small>em andamento</small>' : ''}</div>`
+      + `<div class="sem">${sdDDMM(ds[0].data)} – ${sdDDMM(ds[6].data)}${rotulo}</div>`
       + `<div class="c">${v(L)}</div>`
       + `<div class="c mut">${v(D)}</div>`
-      + `<div class="c ${semDado ? '' : cor(A, somaMeta(vis, 'agend'))}">${v(A)}${meta(mA)}</div>`
+      + comMeta(A, 'agend')
       + `<div class="c">${!semDado && L ? sdPct(A / L) : '—'}</div>`
-      + `<div class="c ${semDado ? '' : cor(R, somaMeta(vis, 'reunioes'))}">${v(R)}${meta(mR)}</div>`
-      + `<div class="c">${!semDado && (R + N) ? sdPct(R / (R + N)) : '—'}</div>`
-      + `<div class="c mut">${v(V)}</div></div>`;
+      + `<div class="c" title="reuniões marcadas nesta semana (Google Agenda): p/ a mesma semana · p/ a seguinte">${ag ? `${ag.mesma} · ${ag.proxima}` : '—'}${ag && ag.depois ? `<span class="meta-l">+${ag.depois} depois</span>` : ''}</div>`
+      + comMeta(R, 'reunioes')
+      + `<div class="c">${!semDado && (R + N) ? sdPct(N / (R + N)) : '—'}</div>`
+      + `<div class="c mut">${v(V)}</div>`
+      + `<div class="c">${!semDado && R ? sdPct(V / R) : '—'}</div></div>`;
   }).join('');
 
   // ── Ritmo da semana atual, dia a dia
@@ -1930,19 +2023,52 @@ function renderSdr(j) {
   }).join('');
   mS('sdSemanaTag', sdDDMM(atual[0].data) + ' – ' + sdDDMM(atual[6].data));
 
-  // ── Plano do mês: meta de faturamento convertida em metas do funil
-  const T = j.plano.taxas, M = j.mesAtual, base = j.plano.base;
-  const diasMes = sdDiasNoMes(j.hoje), restantes = diasMes - (+j.hoje.slice(8, 10)) + 1;
-  const falta = P.agend != null ? Math.max(0, P.agend - M.agend) : null;
+  // ── Plano do mês (mês filtrado, ou o atual): meta de faturamento convertida em metas do funil
+  const T = j.plano.taxas, M = j.mesRef, base = j.plano.base;
+  const ehMesAtual = M.mes === j.hoje.slice(0, 7);
   const b = (x) => `<b>${x == null ? '—' : mN(x)}</b>`;
+  let andamento = '';
+  if (P.agend != null) {
+    const falta = Math.max(0, P.agend - M.agend);
+    const restantes = sdDiasNoMes(j.hoje) - (+j.hoje.slice(8, 10)) + 1;
+    andamento = `<div class="info">${ehMesAtual ? 'No mês até agora' : 'No mês'}: <strong>${mN(M.agend)}</strong> agendamentos de ${mN(P.agend)} (${sdPct(M.agend / P.agend)}) · ${mN(M.reunioes)} reuniões de ${mN(P.reunioes)} · ${mN(M.vendas)} vendas de ${mN(P.vendas)}`
+      + (ehMesAtual ? (falta > 0 ? ` · faltam ${mN(falta)} agendamentos, ≈ <strong>${(falta / restantes).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} por dia</strong>` : ' · meta de agendamentos batida ✓') : '')
+      + `</div>`;
+  }
   document.getElementById('sdPlano').innerHTML =
     `<div class="tit">Plano de ${sdMes(M.mes)} · meta de ${mBRL0(j.plano.metaFaturamento)}</div>`
     + `<div class="cad">${b(P.leads)} leads <span class="seta">→</span> ${b(P.agend)} agendamentos <span class="seta">→</span> ${b(P.reunioes)} reuniões <span class="seta">→</span> ${b(P.vendas)} vendas</div>`
-    + (P.agend != null
-      ? `<div class="info">No mês até agora: <strong>${mN(M.agend)}</strong> agendamentos de ${mN(P.agend)} (${sdPct(M.agend / P.agend)})`
-        + (falta > 0 ? ` · faltam ${mN(falta)}, ≈ <strong>${(falta / restantes).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} por dia</strong> até o fim do mês` : ' · meta do mês batida ✓') + `</div>`
-      : '')
+    + andamento
     + `<div class="info">Taxas reais de ${sdMes(base[0])}–${sdMes(base[base.length - 1])}: ticket ${mBRL0(T.ticket)} · agendamento ${sdPct(T.agendamento)} · comparecimento ${sdPct(T.comparecimento)} · fechamento ${sdPct(T.fechamento)}</div>`;
+
+  // ── No-show por dia da semana × turno (no-shows casados com o evento da Google Agenda)
+  mS('sdNsTag', j.filtroMes ? SD_MES_LONGO[+j.filtroMes.slice(5, 7) - 1] : 'últimas 8 semanas');
+  const hm = document.getElementById('sdHeat');
+  if (!temAgenda(agenda)) {
+    hm.innerHTML = `<div class="sd-vazio">${agenda && agenda.erro === 'sem_agenda'
+      ? 'Conecte a Google Agenda do comercial (link iCal secreto) pra ver em que dia e turno os no-shows acontecem.'
+      : 'Agenda indisponível no momento.'}</div>`;
+    mS('sdNsInfo', '');
+  } else {
+    const S = agenda.noshow.slots || {};
+    const dias = [1, 2, 3, 4, 5, 6, 0];                    // Seg → Dom
+    let html = '<div></div>' + dias.map((d) => `<div class="hd">${SD_DOW[d]}</div>`).join('');
+    [['manha', 'Manhã'], ['tarde', 'Tarde'], ['noite', 'Noite']].forEach(([k, nome]) => {
+      html += `<div class="tl">${nome}</div>`;
+      dias.forEach((d) => {
+        const c = S[d + '-' + k];
+        if (!c || !c.reunioes) { html += '<div class="cel vazia">—</div>'; return; }
+        const taxa = c.noshow / c.reunioes;
+        html += `<div class="cel" style="--a:${Math.min(1, taxa * 1.6).toFixed(2)}" title="${c.noshow} no-show em ${c.reunioes} reuniões marcadas">`
+          + `<b>${sdPct(taxa)}</b><small>${c.noshow} de ${c.reunioes}</small></div>`;
+      });
+    });
+    hm.innerHTML = html;
+    const ns = agenda.noshow;
+    mS('sdNsInfo', (ns.identificados + ns.naoIdentificados) === 0
+      ? 'Ainda sem no-shows cruzados com a agenda neste período: a coleta começou agora, e cada novo no-show passa a ser registrado com o dia e o horário da reunião.'
+      : `% = no-shows ÷ reuniões marcadas naquele dia e turno · ${ns.identificados} no-show(s) cruzado(s) com a agenda` + (ns.naoIdentificados ? ` · ${ns.naoIdentificados} sem correspondência na agenda` : ''));
+  }
 
   mS('sdStatus', 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
 }
