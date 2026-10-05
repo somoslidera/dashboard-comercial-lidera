@@ -2049,62 +2049,33 @@ function renderSdr(j, agenda, agendaAtual) {
     + andamento
     + `<div class="info">Taxas reais de ${sdMes(base[0])}–${sdMes(base[base.length - 1])}: ticket ${mBRL0(T.ticket)} · agendamento ${sdPct(T.agendamento)} · comparecimento ${sdPct(T.comparecimento)} · fechamento ${sdPct(T.fechamento)}</div>`;
 
-  // ── No-show por dia da semana e turno (Google Agenda × reuniões realizadas no LeadForge)
-  //    "Dia todo": histórico — por dia, reuniões marcadas p/ aquele dia (agenda) que não foram realizadas naquele dia.
-  //    Turnos: só a partir do registro de QUAL reunião foi realizada (antes disso o LeadForge guardou só a contagem do dia).
+  // ── No-show por dia da semana e turno: calculado no /api/agenda, casando cada reunião da agenda
+  //    com a "reunião realizada" da mesma pessoa no LeadForge (sem casar = no-show).
   mS('sdNsTag', j.filtroMes ? SD_MES_LONGO[+j.filtroMes.slice(5, 7) - 1] : 'últimas 8 semanas');
   const hm = document.getElementById('sdHeat');
-  if (!temAgenda(agenda) || !agenda.porDia) {
+  if (!temAgenda(agenda) || !agenda.noshow || !agenda.noshow.dias) {
     hm.innerHTML = `<div class="sd-vazio">${agenda && agenda.erro === 'sem_agenda'
       ? 'Conecte a Google Agenda do comercial (link iCal secreto) pra ver em que dia e turno os no-shows acontecem.'
       : 'Agenda indisponível no momento.'}</div>`;
     mS('sdNsInfo', '');
   } else {
-    const DIAS = [1, 2, 3, 4, 5, 6, 0];                    // Seg → Dom
-    // "Dia todo" (histórico): cada reunião marcada na agenda conta como realizada se houver uma "realizada"
-    // registrada no LeadForge no mesmo dia ou até JANELA dias depois (o SDR às vezes marca depois); senão, falta.
-    // Dias úteis sem NENHUM registro no painel (ex.: apagão do Redis em ago/26) ficam de fora: não dá p/ saber se aconteceram.
-    // Reuniões dos últimos JANELA dias ainda podem ser marcadas → ficam pendentes (não entram).
-    const JANELA = 2, DIA_MS = 86400000;
-    const diaTodo = {};
-    const soma1 = (dow, campo, n = 1) => { const c = diaTodo[dow] || (diaTodo[dow] = { reunioes: 0, faltas: 0 }); c[campo] += n; };
-    // apagão = DIA ÚTIL sem nenhum registro (todo dia útil entra lead). Fim de semana vazio é normal → nunca descarta.
-    const semRegistro = (d) => d.dow >= 1 && d.dow <= 5 && !d.leads && !d.agend && !d.reunioes && !d.desq;
-    const fila = [];                                       // reuniões ainda sem "realizada"
-    j.dias.filter((d) => d.noMes && !d.semDado && d.data < j.hoje).forEach((d) => {
-      if (semRegistro(d)) return;
-      const t = Date.parse(d.data);
-      for (let k = fila.length - 1; k >= 0; k--) {        // passou da janela sem ser marcada → falta
-        if (t - fila[k].t > JANELA * DIA_MS) { soma1(fila[k].dow, 'faltas'); fila.splice(k, 1); }
-      }
-      const marcadas = agenda.porDia[d.data] || 0;
-      for (let s = 0; s < marcadas; s++) { fila.push({ t, dow: d.dow }); soma1(d.dow, 'reunioes'); }
-      for (let r = 0; r < d.reunioes && fila.length; r++) fila.pop();   // baixa as mais recentes primeiro
-    });
-    fila.forEach((f) => {
-      if (Date.parse(j.hoje) - f.t > JANELA * DIA_MS) soma1(f.dow, 'faltas');
-      else soma1(f.dow, 'reunioes', -1);                  // ainda pendente: não conta
-    });
-    const T = (agenda.turno && agenda.turno.slots) || {};
-    const temTurno = !!(agenda.turno && agenda.turno.desde);
-    const n1 = (v) => (Number.isInteger(v) ? String(v) : v.toLocaleString('pt-BR', { maximumFractionDigits: 1 }));
+    const NS = agenda.noshow, DIAS = [1, 2, 3, 4, 5, 6, 0];   // Seg → Dom
     const cel = (c) => {
       if (!c || !c.reunioes) return '<div class="cel vazia">—</div>';
       const taxa = c.faltas / c.reunioes;
-      return `<div class="cel" style="--a:${Math.min(1, taxa * 1.6).toFixed(2)}" title="${n1(c.faltas)} falta(s) em ${c.reunioes} reuniões marcadas">`
-        + `<b>${sdPct(taxa)}</b><small>${n1(c.faltas)} de ${c.reunioes}</small></div>`;
+      return `<div class="cel" style="--a:${Math.min(1, taxa * 1.6).toFixed(2)}" title="${c.faltas} no-show em ${c.reunioes} reuniões">`
+        + `<b>${sdPct(taxa)}</b><small>${c.faltas} de ${c.reunioes}</small></div>`;
     };
     let html = '<div></div>' + DIAS.map((d) => `<div class="hd">${SD_DOW[d]}</div>`).join('');
-    html += '<div class="tl forte">Dia todo</div>' + DIAS.map((d) => cel(diaTodo[d])).join('');
+    html += '<div class="tl forte">Dia todo</div>' + DIAS.map((d) => cel(NS.dias[d])).join('');
     [['manha', 'Manhã'], ['tarde', 'Tarde'], ['noite', 'Noite']].forEach(([k, nome]) => {
-      html += `<div class="tl">${nome}</div>`
-        + DIAS.map((d) => (temTurno ? cel(T[d + '-' + k]) : '<div class="cel vazia"><small>coletando</small></div>')).join('');
+      html += `<div class="tl">${nome}</div>` + DIAS.map((d) => cel(NS.slots[d + '-' + k])).join('');
     });
     hm.innerHTML = html;
-    mS('sdNsInfo', '% = reuniões marcadas na agenda p/ aquele dia sem "realizada" no LeadForge (mesmo dia ou até 2 dias depois) ÷ marcadas. Dias úteis sem nenhum registro no painel (apagão de ago/26) ficam de fora. '
-      + (temTurno
-        ? `Turnos contados desde ${sdDDMM(agenda.turno.desde)} (${agenda.turno.casadas} de ${agenda.turno.realizadasRegistradas} realizadas casadas com a agenda).`
-        : 'Turnos: começam a contar com as próximas reuniões realizadas — antes, o LeadForge guardou só quantas aconteceram no dia, não qual.'));
+    mS('sdNsInfo', 'No-show = reunião da agenda que não foi marcada como "Reunião realizada" no LeadForge (até 2 dias depois). '
+      + `${NS.identificadas} reuniões casadas com a realizada da mesma pessoa; as demais, pela contagem de realizadas do dia`
+      + (NS.diasForaApagao && NS.diasForaApagao.length ? ` · ${NS.diasForaApagao.length} dia(s) do apagão de ago/26 fora da conta` : '')
+      + ' · reuniões dos últimos 2 dias ainda não entram.');
   }
 
   mS('sdStatus', 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));

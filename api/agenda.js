@@ -130,56 +130,136 @@ export default async function handler(req, res) {
   primeiras.filter((e) => e.inicio >= ini && e.inicio < fim && e.inicio < agora)
     .forEach((e) => { const k = isoDia(e.inicio); porDia[k] = (porDia[k] || 0) + 1; });
 
-  // ── no-show por TURNO (manhã/tarde/noite) — a partir do 1º registro de reunião REALIZADA (rl:{mes}).
-  // Antes disso o LeadForge só guardou QUANTAS foram realizadas por dia, não QUAL; aí não dá p/ saber o turno.
-  // Cada realizada é casada com o evento da agenda (e-mail do convidado > nome ATUAL do lead > nome gravado).
-  // As que sobram sem casar são as faltas — limitadas, por dia, a (marcadas − realizadas) p/ bater com a tabela.
+  // ── NO-SHOW por dia da semana e turno (histórico desde o registro diário).
+  // Cada reunião da agenda vira REALIZADA se casar com uma "reunião realizada" do LeadForge DA MESMA PESSOA
+  // (e-mail do convidado ou nome; marcada até 3 dias depois). Identidade das realizadas:
+  //   • antigas: IDs em fxs:r:{mes} → lead → título/nome/e-mail via API (cache rx:{deal});
+  //   • novas: registro rl:{mes} do webhook (nome ATUAL buscado pelo telefone).
+  // Realizadas sem identidade "baixam" reuniões pela contagem do dia (mesmo dia primeiro, depois até 2 dias antes).
+  // Dias úteis sem nenhum registro no painel (apagão de ago/26) ficam de fora; reuniões dos últimos 2 dias ficam pendentes.
+  const JANELA = 2 * DIA;
+  const evs = primeiras.filter((e) => e.inicio >= ini && e.inicio < fim && e.inicio < agora).sort((a, b) => a.inicio - b.inicio);
+  const diasLista = [];
+  for (let t = ini; t < fim; t += DIA) diasLista.push(isoDia(t));
   const meses = [];
   for (let d = new Date(Date.UTC(new Date(ini).getUTCFullYear(), new Date(ini).getUTCMonth(), 1)); d.getTime() < fim; d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))) meses.push(d.toISOString().slice(0, 7));
-  let registros = [];
-  if (R_URL && R_TOKEN && meses.length) {
+
+  let cont = [], idsR = [], rls = [];
+  if (R_URL && R_TOKEN) {
     try {
-      const listas = await redisPipe(meses.map((m) => ['LRANGE', `rl:${m}`, 0, -1]));
-      registros = listas.flat().filter(Boolean).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } })
-        .filter(Boolean).map((r) => ({ ...r, tt: Date.parse(r.t) - BR })).filter((r) => r.tt >= ini - 2 * DIA && r.tt < fim + DIA);
-    } catch (e) { /* sem registros */ }
+      const out = await redisPipe([
+        ['MGET', ...diasLista.flatMap((d) => [`l:${d}`, `o:${d}`, `r:${d}`, `d:${d}`])],
+        ...meses.map((m) => ['SMEMBERS', `fxs:r:${m}`]),
+        ...meses.map((m) => ['LRANGE', `rl:${m}`, 0, -1])
+      ]);
+      cont = out[0] || [];
+      idsR = [...new Set(out.slice(1, 1 + meses.length).flat().filter(Boolean))];
+      rls = out.slice(1 + meses.length).flat().filter(Boolean).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
+    } catch (e) { /* sem dados do Redis */ }
   }
-  const slots = {};
-  const chave = (t) => new Date(t).getUTCDay() + '-' + turno(t);
-  const slot = (t) => (slots[chave(t)] || (slots[chave(t)] = { reunioes: 0, faltas: 0 }));
-  let turnoDesde = null, casadas = 0;
-  if (registros.length) {
-    const d0 = Math.min(...registros.map((r) => r.tt));
-    turnoDesde = Date.UTC(new Date(d0).getUTCFullYear(), new Date(d0).getUTCMonth(), new Date(d0).getUTCDate());
-    const evs = primeiras.filter((e) => e.inicio >= Math.max(ini, turnoDesde) && e.inicio < fim && e.inicio < agora);
-    const atuais = await Promise.all(registros.map((r) => leadAtual(r)));   // nome/e-mail de HOJE (o nome pode ter mudado)
-    const realizado = new Set(), rPorDia = {};
-    registros.slice().sort((a, b) => a.tt - b.tt).forEach((rec) => {
-      const i = registros.indexOf(rec), atual = atuais[i];
-      const dk = isoDia(rec.tt); rPorDia[dk] = (rPorDia[dk] || 0) + 1;
-      const email = norm((atual && atual.email) || rec.email);
-      const nomes = [primeiroNome(atual && atual.full_name), primeiroNome(rec.nome)].filter(Boolean);
-      // reunião mais recente antes de marcarem "realizada" (até 2 dias antes / 12h depois), ainda não usada
-      const cand = evs.filter((e) => !realizado.has(e) && e.inicio <= rec.tt + 12 * 3600 * 1000 && e.inicio >= rec.tt - 2 * DIA)
+  const num = (v) => parseFloat(v || 0) || 0;
+  const apagao = new Set(), rDia = {};
+  diasLista.forEach((d, i) => {
+    const dow = new Date(Date.parse(d)).getUTCDay();
+    const v = [0, 1, 2, 3].map((k) => num(cont[i * 4 + k]));
+    rDia[d] = v[2];
+    if (dow >= 1 && dow <= 5 && v.every((x) => !x)) apagao.add(d);
+  });
+
+  // identidade das realizadas
+  const ident = {};
+  const rlPorDeal = {};
+  rls.forEach((r) => { if (r.deal) rlPorDeal[r.deal] = r; });
+  await Promise.all(Object.values(rlPorDeal).map(async (rec) => {
+    const atual = await leadAtual(rec);
+    ident[rec.deal] = { t: rec.t, email: (atual && atual.email) || rec.email || null, nomes: [atual && atual.full_name, rec.nome].filter(Boolean) };
+  }));
+  const semIdent = idsR.filter((id) => !ident[id]);
+  if (semIdent.length && R_URL && R_TOKEN) {
+    try {
+      const cache = (await redisPipe([['MGET', ...semIdent.map((id) => `rx:${id}`)]]))[0] || [];
+      const faltando = [];
+      semIdent.forEach((id, i) => { const c = cache[i]; if (c && c !== '_') { try { ident[id] = JSON.parse(c); } catch (e) {} } else if (!c) faltando.push(id); });
+      const lote = faltando.slice(0, 15);                       // resolve aos poucos e guarda (cache permanente)
+      if (lote.length) {
+        const dls = (await redisPipe([['MGET', ...lote.map((id) => `dl:${id}`)]]))[0] || [];
+        const sets = [];
+        await Promise.all(lote.map(async (id, i) => {
+          const r = await resolverRealizada(id, dls[i]);
+          if (r) { ident[id] = r; sets.push(['SET', `rx:${id}`, JSON.stringify(r)]); }
+          else sets.push(['SET', `rx:${id}`, '_', 'EX', 21600]);   // tenta de novo em 6h
+        }));
+        if (sets.length) await redisPipe(sets);
+      }
+    } catch (e) { /* segue com o que tiver */ }
+  }
+
+  // 1) casa realizadas identificadas com o evento da mesma pessoa
+  const casado = new Set(), idPorDia = {};
+  Object.values(ident).map((r) => ({ tt: Date.parse(r.t) - BR, email: norm(r.email), nomes: (r.nomes || []).map(primeiroNome).filter(Boolean) }))
+    .filter((r) => !isNaN(r.tt)).sort((a, b) => a.tt - b.tt).forEach((r) => {
+      const k = isoDia(r.tt); idPorDia[k] = (idPorDia[k] || 0) + 1;
+      const cand = evs.filter((e) => !casado.has(e) && e.inicio <= r.tt + 12 * 3600 * 1000 && e.inicio >= r.tt - 3 * DIA)
         .sort((a, b) => b.inicio - a.inicio);
-      const ev = (email && cand.find((e) => e.emails.includes(email))) || cand.find((e) => nomes.includes(e.nome));
-      if (ev) { realizado.add(ev); casadas++; }
+      const ev = (r.email && cand.find((e) => e.emails.includes(r.email))) || cand.find((e) => r.nomes.includes(e.nome));
+      if (ev) casado.add(ev);
     });
-    // por dia: faltas = marcadas − realizadas; distribuídas entre as reuniões que ficaram sem casar
-    const porDiaEv = {};
-    evs.forEach((e) => { (porDiaEv[isoDia(e.inicio)] = porDiaEv[isoDia(e.inicio)] || []).push(e); });
-    Object.entries(porDiaEv).forEach(([dk, lista]) => {
-      const soltas = lista.filter((e) => !realizado.has(e));
-      const faltas = Math.max(0, lista.length - (rPorDia[dk] || 0));
-      const peso = soltas.length ? Math.min(1, faltas / soltas.length) : 0;
-      lista.forEach((e) => { const s = slot(e.inicio); s.reunioes++; if (!realizado.has(e)) s.faltas += peso; });
-    });
-  }
+
+  // 2) o resto: realizadas sem identidade baixam reuniões pela contagem do dia
+  const status = new Map(), fila = [];
+  const hojeDia = Date.parse(isoDia(agora));
+  diasLista.forEach((d) => {
+    const t = Date.parse(d), doDia = evs.filter((e) => isoDia(e.inicio) === d);
+    if (apagao.has(d)) { doDia.forEach((e) => status.set(e, 'fora')); return; }
+    for (let k = fila.length - 1; k >= 0; k--) if (t - fila[k].dia > JANELA) { status.set(fila[k].ev, 'falta'); fila.splice(k, 1); }
+    doDia.forEach((e) => { if (casado.has(e)) status.set(e, 'ok'); else fila.push({ ev: e, dia: t }); });
+    let livres = Math.max(0, (rDia[d] || 0) - (idPorDia[d] || 0));
+    while (livres-- > 0 && fila.length) status.set(fila.pop().ev, 'ok');
+  });
+  fila.forEach((f) => status.set(f.ev, hojeDia - f.dia > JANELA ? 'falta' : 'pendente'));
+
+  const slots = {}, porDow = {};
+  const conta = (obj, k, falta) => { const a = obj[k] || (obj[k] = { reunioes: 0, faltas: 0 }); a.reunioes++; if (falta) a.faltas++; };
+  evs.forEach((e) => {
+    const s = status.get(e);
+    if (s !== 'ok' && s !== 'falta') return;
+    conta(slots, new Date(e.inicio).getUTCDay() + '-' + turno(e.inicio), s === 'falta');
+    conta(porDow, new Date(e.inicio).getUTCDay(), s === 'falta');
+  });
 
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=600');
   return res.status(200).json({
     semanas,
     porDia,
-    turno: { desde: turnoDesde != null ? isoDia(turnoDesde) : null, realizadasRegistradas: registros.length, casadas, slots }
+    noshow: {
+      dias: porDow, slots,
+      realizadas: idsR.length, identificadas: casado.size,
+      diasForaApagao: [...apagao].filter((d) => evs.some((e) => isoDia(e.inicio) === d))
+    }
   });
+}
+
+// realizada antiga → quando foi marcada + nome/e-mail do lead (título da negociação; nome/e-mail atuais via busca)
+async function resolverRealizada(dealId, leadId) {
+  const key = process.env.LEADFORGE_API_KEY;
+  if (!key || !leadId) return null;
+  const LF = 'https://api.leadforge.com.br/api/v1', H = { headers: { 'X-API-Key': key } };
+  try {
+    const jd = await (await fetch(`${LF}/deals/search?lead_id=${leadId}`, H)).json();
+    const d = ((jd && jd.deals) || []).find((x) => x.id === dealId);
+    if (!d) return null;
+    const t = d.closed_at || d.updated_at;
+    if (!t) return null;
+    const titulo = (d.title || '').trim();
+    const nomeTit = titulo.includes(' - ') ? titulo.split(' - ').slice(1).join(' - ').trim() : titulo;
+    let email = null, nomeAtual = null;
+    if (nomeTit) {
+      try {
+        const jl = await (await fetch(`${LF}/leads/search?name=${encodeURIComponent(nomeTit)}`, H)).json();
+        const l = ((jl && jl.leads) || []).find((x) => x.id === leadId);
+        if (l) { email = l.email || null; nomeAtual = l.full_name || null; }
+      } catch (e) { /* fica só com o título */ }
+    }
+    return { t, email, nomes: [nomeAtual, nomeTit].filter(Boolean) };
+  } catch (e) { return null; }
 }
