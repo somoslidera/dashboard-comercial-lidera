@@ -2071,10 +2071,14 @@ function renderSdr(j, agenda, agendaAtual) {
       html += `<div class="tl">${nome}</div>` + DIAS.map((d) => cel(NS.slots[d + '-' + k])).join('');
     });
     hm.innerHTML = html;
-    mS('sdNsInfo', 'No-show = reunião da agenda que não foi marcada como "Reunião realizada" no LeadForge (até 2 dias depois). '
+    const C = NS.conferencia;
+    document.getElementById('sdNsInfo').innerHTML = (C
+      ? `<b>Conferência do período:</b> ${C.reunioes} reuniões na agenda · ${C.realizadasNoLeadForge} realizadas no LeadForge · `
+        + `${C.creditadas} creditadas · <b>${C.faltas} no-show (${sdPct(C.reunioes ? C.faltas / C.reunioes : null)})</b><br>` : '')
+      + 'No-show = reunião da agenda que não foi marcada como "Reunião realizada" no LeadForge (até 2 dias depois). '
       + `${NS.identificadas} reuniões casadas com a realizada da mesma pessoa; as demais, pela contagem de realizadas do dia`
       + (NS.diasForaApagao && NS.diasForaApagao.length ? ` · ${NS.diasForaApagao.length} dia(s) do apagão de ago/26 fora da conta` : '')
-      + ' · reuniões dos últimos 2 dias ainda não entram.');
+      + ' · reuniões dos últimos 2 dias ainda não entram.';
   }
 
   mS('sdStatus', 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));

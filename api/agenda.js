@@ -198,11 +198,11 @@ export default async function handler(req, res) {
   const casado = new Set(), idPorDia = {};
   Object.values(ident).map((r) => ({ tt: Date.parse(r.t) - BR, email: norm(r.email), nomes: (r.nomes || []).map(primeiroNome).filter(Boolean) }))
     .filter((r) => !isNaN(r.tt)).sort((a, b) => a.tt - b.tt).forEach((r) => {
-      const k = isoDia(r.tt); idPorDia[k] = (idPorDia[k] || 0) + 1;
       const cand = evs.filter((e) => !casado.has(e) && e.inicio <= r.tt + 12 * 3600 * 1000 && e.inicio >= r.tt - 3 * DIA)
         .sort((a, b) => b.inicio - a.inicio);
       const ev = (r.email && cand.find((e) => e.emails.includes(r.email))) || cand.find((e) => r.nomes.includes(e.nome));
-      if (ev) casado.add(ev);
+      // só desconta da contagem do dia a realizada que CASOU; a que não casou volta p/ a contagem (não pode sumir)
+      if (ev) { casado.add(ev); const k = isoDia(r.tt); idPorDia[k] = (idPorDia[k] || 0) + 1; }
     });
 
   // 2) o resto: realizadas sem identidade baixam reuniões pela contagem do dia
@@ -217,6 +217,16 @@ export default async function handler(req, res) {
     while (livres-- > 0 && fila.length) status.set(fila.pop().ev, 'ok');
   });
   fila.forEach((f) => status.set(f.ev, hojeDia - f.dia > JANELA ? 'falta' : 'pendente'));
+
+  // conferência (p/ o usuário checar): realizadas registradas no LeadForge no período × creditadas a reuniões
+  const conferencia = { reunioes: 0, faltas: 0, creditadas: 0, pendentes: 0, realizadasNoLeadForge: 0 };
+  diasLista.forEach((d) => { if (!apagao.has(d) && Date.parse(d) <= hojeDia) conferencia.realizadasNoLeadForge += rDia[d] || 0; });
+  evs.forEach((e) => {
+    const s = status.get(e);
+    if (s === 'ok') { conferencia.reunioes++; conferencia.creditadas++; }
+    else if (s === 'falta') { conferencia.reunioes++; conferencia.faltas++; }
+    else if (s === 'pendente') conferencia.pendentes++;
+  });
 
   const slots = {}, porDow = {};
   const conta = (obj, k, falta) => { const a = obj[k] || (obj[k] = { reunioes: 0, faltas: 0 }); a.reunioes++; if (falta) a.faltas++; };
@@ -233,7 +243,7 @@ export default async function handler(req, res) {
     porDia,
     noshow: {
       dias: porDow, slots,
-      realizadas: idsR.length, identificadas: casado.size,
+      realizadas: idsR.length, identificadas: casado.size, conferencia,
       diasForaApagao: [...apagao].filter((d) => evs.some((e) => isoDia(e.inicio) === d))
     }
   });
