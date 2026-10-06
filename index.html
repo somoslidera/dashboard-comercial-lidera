@@ -2073,12 +2073,12 @@ function renderSdr(j, agenda, agendaAtual) {
     hm.innerHTML = html;
     const C = NS.conferencia;
     document.getElementById('sdNsInfo').innerHTML = (C
-      ? `<b>Conferência do período:</b> ${C.reunioes} reuniões na agenda · ${C.realizadasNoLeadForge} realizadas no LeadForge · `
-        + `${C.creditadas} creditadas · <b>${C.faltas} no-show (${sdPct(C.reunioes ? C.faltas / C.reunioes : null)})</b><br>` : '')
-      + 'No-show = reunião da agenda que não foi marcada como "Reunião realizada" no LeadForge (até 2 dias depois). '
-      + `${NS.identificadas} reuniões casadas com a realizada da mesma pessoa; as demais, pela contagem de realizadas do dia`
-      + (NS.diasForaApagao && NS.diasForaApagao.length ? ` · ${NS.diasForaApagao.length} dia(s) do apagão de ago/26 fora da conta` : '')
-      + ' · reuniões dos últimos 2 dias ainda não entram.';
+      ? `<b>Conferência do período:</b> LeadForge registrou ${C.realizadasNoLeadForge} realizadas e ${C.noshowNoLeadForge} no-shows · `
+        + `no mapa: ${C.realizadas} realizadas + <b>${C.noshow} no-shows (${sdPct((C.realizadas + C.noshow) ? C.noshow / (C.realizadas + C.noshow) : null)})</b>`
+        + ` · ${C.semRegistro} reuniões da agenda sem registro (fora da conta)<br>` : '')
+      + 'No-show = reunião que caiu no funil "Rastreio - No-Show"; % = no-shows ÷ (realizadas + no-shows). '
+      + `${NS.casadasPelaPessoa} registros casados com o evento pela pessoa; os demais, pela contagem do dia`
+      + (NS.diasForaApagao && NS.diasForaApagao.length ? ` · ${NS.diasForaApagao.length} dia(s) do apagão de ago/26 fora da conta` : '') + '.';
   }
 
   mS('sdStatus', 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));

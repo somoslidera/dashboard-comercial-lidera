@@ -130,43 +130,46 @@ export default async function handler(req, res) {
   primeiras.filter((e) => e.inicio >= ini && e.inicio < fim && e.inicio < agora)
     .forEach((e) => { const k = isoDia(e.inicio); porDia[k] = (porDia[k] || 0) + 1; });
 
-  // ── NO-SHOW por dia da semana e turno (histórico desde o registro diário).
-  // Cada reunião da agenda vira REALIZADA se casar com uma "reunião realizada" do LeadForge DA MESMA PESSOA
-  // (e-mail do convidado ou nome; marcada até 3 dias depois). Identidade das realizadas:
-  //   • antigas: IDs em fxs:r:{mes} → lead → título/nome/e-mail via API (cache rx:{deal});
-  //   • novas: registro rl:{mes} do webhook (nome ATUAL buscado pelo telefone).
-  // Realizadas sem identidade "baixam" reuniões pela contagem do dia (mesmo dia primeiro, depois até 2 dias antes).
-  // Dias úteis sem nenhum registro no painel (apagão de ago/26) ficam de fora; reuniões dos últimos 2 dias ficam pendentes.
-  const JANELA = 2 * DIA;
+  // ── NO-SHOW por dia da semana e turno.
+  // Regra do comercial: NO-SHOW = reunião que caiu no funil "Rastreio - No-Show"; REALIZADA = marcada como "Reunião realizada".
+  // Taxa = no-shows ÷ (realizadas + no-shows). Reunião da agenda sem nenhum dos dois registros não entra na conta.
+  // Pra saber o dia/turno, cada registro é casado com o evento da agenda:
+  //   • pela PESSOA (e-mail do convidado ou nome): realizadas antigas via API (fxs:r → cache rx:), novas via rl:{mes};
+  //     no-shows a partir do registro nsl:{mes} do webhook;
+  //   • o que não tem identidade: pela contagem do dia (r:dia / n:dia), reunião mais recente primeiro, até 2–3 dias antes.
+  // Dias úteis sem nenhum registro no painel (apagão de ago/26) ficam de fora.
   const evs = primeiras.filter((e) => e.inicio >= ini && e.inicio < fim && e.inicio < agora).sort((a, b) => a.inicio - b.inicio);
   const diasLista = [];
   for (let t = ini; t < fim; t += DIA) diasLista.push(isoDia(t));
   const meses = [];
   for (let d = new Date(Date.UTC(new Date(ini).getUTCFullYear(), new Date(ini).getUTCMonth(), 1)); d.getTime() < fim; d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))) meses.push(d.toISOString().slice(0, 7));
 
-  let cont = [], idsR = [], rls = [];
+  let cont = [], idsR = [], rls = [], nsls = [];
   if (R_URL && R_TOKEN) {
     try {
       const out = await redisPipe([
-        ['MGET', ...diasLista.flatMap((d) => [`l:${d}`, `o:${d}`, `r:${d}`, `d:${d}`])],
+        ['MGET', ...diasLista.flatMap((d) => [`l:${d}`, `o:${d}`, `r:${d}`, `d:${d}`, `n:${d}`])],
         ...meses.map((m) => ['SMEMBERS', `fxs:r:${m}`]),
-        ...meses.map((m) => ['LRANGE', `rl:${m}`, 0, -1])
+        ...meses.map((m) => ['LRANGE', `rl:${m}`, 0, -1]),
+        ...meses.map((m) => ['LRANGE', `nsl:${m}`, 0, -1])
       ]);
+      const json = (x) => { try { return JSON.parse(x); } catch (e) { return null; } };
       cont = out[0] || [];
       idsR = [...new Set(out.slice(1, 1 + meses.length).flat().filter(Boolean))];
-      rls = out.slice(1 + meses.length).flat().filter(Boolean).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
+      rls = out.slice(1 + meses.length, 1 + 2 * meses.length).flat().filter(Boolean).map(json).filter(Boolean);
+      nsls = out.slice(1 + 2 * meses.length).flat().filter(Boolean).map(json).filter(Boolean);
     } catch (e) { /* sem dados do Redis */ }
   }
   const num = (v) => parseFloat(v || 0) || 0;
-  const apagao = new Set(), rDia = {};
+  const apagao = new Set(), rDia = {}, nDia = {};
   diasLista.forEach((d, i) => {
     const dow = new Date(Date.parse(d)).getUTCDay();
-    const v = [0, 1, 2, 3].map((k) => num(cont[i * 4 + k]));
-    rDia[d] = v[2];
+    const v = [0, 1, 2, 3, 4].map((k) => num(cont[i * 5 + k]));
+    rDia[d] = v[2]; nDia[d] = v[4];
     if (dow >= 1 && dow <= 5 && v.every((x) => !x)) apagao.add(d);
   });
 
-  // identidade das realizadas
+  // identidade das realizadas (antigas via API com cache; novas via rl)
   const ident = {};
   const rlPorDeal = {};
   rls.forEach((r) => { if (r.deal) rlPorDeal[r.deal] = r; });
@@ -193,48 +196,66 @@ export default async function handler(req, res) {
       }
     } catch (e) { /* segue com o que tiver */ }
   }
+  // identidade dos no-shows (só existe a partir do registro nsl; nome/e-mail ATUAIS pelo telefone)
+  const identNs = await Promise.all(nsls.map(async (rec) => {
+    const atual = await leadAtual(rec);
+    return { t: rec.t, email: (atual && atual.email) || rec.email || null, nomes: [atual && atual.full_name, rec.nome].filter(Boolean) };
+  }));
 
-  // 1) casa realizadas identificadas com o evento da mesma pessoa
-  const casado = new Set(), idPorDia = {};
-  Object.values(ident).map((r) => ({ tt: Date.parse(r.t) - BR, email: norm(r.email), nomes: (r.nomes || []).map(primeiroNome).filter(Boolean) }))
-    .filter((r) => !isNaN(r.tt)).sort((a, b) => a.tt - b.tt).forEach((r) => {
-      const cand = evs.filter((e) => !casado.has(e) && e.inicio <= r.tt + 12 * 3600 * 1000 && e.inicio >= r.tt - 3 * DIA)
-        .sort((a, b) => b.inicio - a.inicio);
-      const ev = (r.email && cand.find((e) => e.emails.includes(r.email))) || cand.find((e) => r.nomes.includes(e.nome));
-      // só desconta da contagem do dia a realizada que CASOU; a que não casou volta p/ a contagem (não pode sumir)
-      if (ev) { casado.add(ev); const k = isoDia(r.tt); idPorDia[k] = (idPorDia[k] || 0) + 1; }
+  const status = new Map();
+  evs.forEach((e) => { if (apagao.has(isoDia(e.inicio))) status.set(e, 'fora'); });
+
+  // casa registros identificados com o evento da mesma pessoa (até 3 dias antes / 12h depois do registro)
+  const casarPorPessoa = (lista, marca) => {
+    const porDiaCasado = {};
+    lista.map((r) => ({ tt: Date.parse(r.t) - BR, email: norm(r.email), nomes: (r.nomes || []).map(primeiroNome).filter(Boolean) }))
+      .filter((r) => !isNaN(r.tt)).sort((a, b) => a.tt - b.tt).forEach((r) => {
+        const cand = evs.filter((e) => !status.has(e) && e.inicio <= r.tt + 12 * 3600 * 1000 && e.inicio >= r.tt - 3 * DIA)
+          .sort((a, b) => b.inicio - a.inicio);
+        const ev = (r.email && cand.find((e) => e.emails.includes(r.email))) || cand.find((e) => r.nomes.includes(e.nome));
+        // só desconta da contagem do dia o registro que CASOU; o que não casou volta p/ a contagem (não pode sumir)
+        if (ev) { status.set(ev, marca); const k = isoDia(r.tt); porDiaCasado[k] = (porDiaCasado[k] || 0) + 1; }
+      });
+    return porDiaCasado;
+  };
+  // registros sem identidade: pela contagem do dia, na reunião sem registro mais recente (mesmo dia primeiro)
+  const casarPorContagem = (porDia, jaCasados, janelaDias, marca) => {
+    diasLista.forEach((d) => {
+      if (apagao.has(d)) return;
+      let livres = Math.max(0, (porDia[d] || 0) - (jaCasados[d] || 0));
+      if (!livres) return;
+      const t = Date.parse(d);
+      const cand = evs.filter((e) => {
+        if (status.has(e)) return false;
+        const de = Date.parse(isoDia(e.inicio));
+        return de <= t && t - de <= janelaDias * DIA;
+      }).sort((a, b) => b.inicio - a.inicio);
+      while (livres-- > 0 && cand.length) status.set(cand.shift(), marca);
     });
+  };
+  const rCasadas = casarPorPessoa(Object.values(ident), 'ok');
+  const nCasados = casarPorPessoa(identNs, 'noshow');
+  casarPorContagem(rDia, rCasadas, 2, 'ok');
+  casarPorContagem(nDia, nCasados, 3, 'noshow');
 
-  // 2) o resto: realizadas sem identidade baixam reuniões pela contagem do dia
-  const status = new Map(), fila = [];
+  // conferência (p/ o usuário checar): registros do LeadForge no período × o que foi atribuído a reuniões da agenda
   const hojeDia = Date.parse(isoDia(agora));
+  const conferencia = { reunioesAgenda: 0, realizadas: 0, noshow: 0, semRegistro: 0, realizadasNoLeadForge: 0, noshowNoLeadForge: 0 };
   diasLista.forEach((d) => {
-    const t = Date.parse(d), doDia = evs.filter((e) => isoDia(e.inicio) === d);
-    if (apagao.has(d)) { doDia.forEach((e) => status.set(e, 'fora')); return; }
-    for (let k = fila.length - 1; k >= 0; k--) if (t - fila[k].dia > JANELA) { status.set(fila[k].ev, 'falta'); fila.splice(k, 1); }
-    doDia.forEach((e) => { if (casado.has(e)) status.set(e, 'ok'); else fila.push({ ev: e, dia: t }); });
-    let livres = Math.max(0, (rDia[d] || 0) - (idPorDia[d] || 0));
-    while (livres-- > 0 && fila.length) status.set(fila.pop().ev, 'ok');
+    if (apagao.has(d) || Date.parse(d) > hojeDia) return;
+    conferencia.realizadasNoLeadForge += rDia[d] || 0; conferencia.noshowNoLeadForge += nDia[d] || 0;
   });
-  fila.forEach((f) => status.set(f.ev, hojeDia - f.dia > JANELA ? 'falta' : 'pendente'));
-
-  // conferência (p/ o usuário checar): realizadas registradas no LeadForge no período × creditadas a reuniões
-  const conferencia = { reunioes: 0, faltas: 0, creditadas: 0, pendentes: 0, realizadasNoLeadForge: 0 };
-  diasLista.forEach((d) => { if (!apagao.has(d) && Date.parse(d) <= hojeDia) conferencia.realizadasNoLeadForge += rDia[d] || 0; });
-  evs.forEach((e) => {
-    const s = status.get(e);
-    if (s === 'ok') { conferencia.reunioes++; conferencia.creditadas++; }
-    else if (s === 'falta') { conferencia.reunioes++; conferencia.faltas++; }
-    else if (s === 'pendente') conferencia.pendentes++;
-  });
-
   const slots = {}, porDow = {};
-  const conta = (obj, k, falta) => { const a = obj[k] || (obj[k] = { reunioes: 0, faltas: 0 }); a.reunioes++; if (falta) a.faltas++; };
+  const conta = (obj, k, ns) => { const a = obj[k] || (obj[k] = { reunioes: 0, faltas: 0 }); a.reunioes++; if (ns) a.faltas++; };
   evs.forEach((e) => {
     const s = status.get(e);
-    if (s !== 'ok' && s !== 'falta') return;
-    conta(slots, new Date(e.inicio).getUTCDay() + '-' + turno(e.inicio), s === 'falta');
-    conta(porDow, new Date(e.inicio).getUTCDay(), s === 'falta');
+    if (s === 'fora') return;
+    conferencia.reunioesAgenda++;
+    if (s === 'ok') conferencia.realizadas++;
+    else if (s === 'noshow') conferencia.noshow++;
+    else { conferencia.semRegistro++; return; }
+    conta(slots, new Date(e.inicio).getUTCDay() + '-' + turno(e.inicio), s === 'noshow');
+    conta(porDow, new Date(e.inicio).getUTCDay(), s === 'noshow');
   });
 
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=600');
@@ -242,8 +263,8 @@ export default async function handler(req, res) {
     semanas,
     porDia,
     noshow: {
-      dias: porDow, slots,
-      realizadas: idsR.length, identificadas: casado.size, conferencia,
+      dias: porDow, slots, conferencia,
+      casadasPelaPessoa: Object.values(rCasadas).reduce((s, x) => s + x, 0) + Object.values(nCasados).reduce((s, x) => s + x, 0),
       diasForaApagao: [...apagao].filter((d) => evs.some((e) => isoDia(e.inicio) === d))
     }
   });
