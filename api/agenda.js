@@ -236,7 +236,7 @@ export default async function handler(req, res) {
   const rCasadas = casarPorPessoa(Object.values(ident), 'ok');
   const nCasados = casarPorPessoa(identNs, 'noshow');
   casarPorContagem(rDia, rCasadas, 2, 'ok');
-  casarPorContagem(nDia, nCasados, 3, 'noshow');
+  casarPorContagem(nDia, nCasados, 5, 'noshow');           // o card pode ir p/ o funil de no-show alguns dias depois
 
   // conferência (p/ o usuário checar): registros do LeadForge no período × o que foi atribuído a reuniões da agenda
   const hojeDia = Date.parse(isoDia(agora));
@@ -257,6 +257,10 @@ export default async function handler(req, res) {
     conta(slots, new Date(e.inicio).getUTCDay() + '-' + turno(e.inicio), s === 'noshow');
     conta(porDow, new Date(e.inicio).getUTCDay(), s === 'noshow');
   });
+
+  // registros do LeadForge que não acharam reunião na agenda (ex.: reunião durante o apagão, título fora do padrão "PLL")
+  conferencia.noshowSemReuniao = Math.max(0, conferencia.noshowNoLeadForge - conferencia.noshow);
+  conferencia.realizadasSemReuniao = Math.max(0, conferencia.realizadasNoLeadForge - conferencia.realizadas);
 
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=600');
   return res.status(200).json({
