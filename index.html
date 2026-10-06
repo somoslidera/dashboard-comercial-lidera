@@ -523,7 +523,7 @@
       <h2>Semana a semana <span class="tag">DOM → SÁB</span> <span class="tag" id="sdFiltroTag" hidden></span></h2>
       <div class="sd-thead"><div>Semana</div><div>Leads</div><div>Desq.</div><div>Agend.</div><div>Tx. agend.</div><div>Marcou p/</div><div>Reuniões</div><div>No-show</div><div>Vendas</div><div>Tx. vendas</div></div>
       <div class="sd-tbody" id="sdSemanas"></div>
-      <div class="sd-legenda"><b>meta</b> = meta da semana (meta do mês ÷ dias do mês × dias da semana) · cor: verde no ritmo, dourado ≥ 80%, vermelho abaixo · <b>Marcou p/</b> = reuniões marcadas na semana (Google Agenda): p/ a mesma semana · p/ a seguinte · <b>No-show</b> = (agendamentos − reuniões realizadas) ÷ agendamentos ·<b>Tx. vendas</b> = vendas ÷ reuniões realizadas</div>
+      <div class="sd-legenda"><b>meta</b> = meta da semana (meta do mês ÷ dias do mês × dias da semana) · cor: verde no ritmo, dourado ≥ 80%, vermelho abaixo · <b>Marcou p/</b> = reuniões marcadas na semana (Google Agenda): p/ a mesma semana · p/ a seguinte · <b>No-show</b> = reuniões que caíram no funil "Rastreio - No-Show" ÷ agendamentos ·<b>Tx. vendas</b> = vendas ÷ reuniões realizadas</div>
       <div class="sd-plano" id="sdPlano"></div>
     </div>
     <div class="sd-direita">
@@ -1958,9 +1958,9 @@ function renderSdr(j, agenda, agendaAtual) {
   const cor = (real, meta) => (!meta ? 'mut' : real >= meta ? 'ok' : real >= meta * 0.8 ? 'meio' : 'ruim');
   const temAgenda = (a) => !!(a && !a.erro && a.semanas);
   const semAg = (a, dom) => (temAgenda(a) && a.semanas[dom]) || null;
-  // NO-SHOW da semana = (agendamentos − reuniões realizadas) ÷ agendamentos (definição do comercial).
-  // Se aconteceram mais reuniões que agendamentos (marcadas em semanas anteriores), fica 0%.
-  const noShow = (A, R) => { const faltas = Math.max(0, A - R); return { taxa: A ? faltas / A : null, faltas, base: A }; };
+  // NO-SHOW da semana = reuniões que caíram no funil "Rastreio - No-Show" ÷ agendamentos (definição do comercial).
+  // Agendamento sem registro (remarcado, card não movido) NÃO conta como no-show.
+  const noShow = (A, N) => ({ taxa: A ? N / A : null, faltas: N, base: A });
 
   const atual = j.semanaAtual;
   const ateHoje = atual.filter((d) => !d.futuro);
@@ -1977,7 +1977,7 @@ function renderSdr(j, agenda, agendaAtual) {
   const wL = kpi('sdLeads', 'leads'), wA = kpi('sdAgend', 'agend'), wR = kpi('sdReun', 'reunioes');
   const wN = soma(ateHoje, 'noshow');
   mS('sdTaxa', wL ? sdPct(wA / wL) : '—');
-  const nsW = noShow(wA, wR);
+  const nsW = noShow(wA, wN);
   mS('sdTaxaSub', 'no-show da semana: ' + sdPct(nsW.taxa) + (nsW.base ? ` (${nsW.faltas} de ${nsW.base})` : ''));
   const sa = semAg(agendaAtual, atual[0].data);
   mS('sdAgendAgenda', sa
@@ -2011,7 +2011,7 @@ function renderSdr(j, agenda, agendaAtual) {
       + `<div class="c" title="reuniões marcadas nesta semana (Google Agenda): p/ a mesma semana · p/ a seguinte">${ag ? `${ag.mesma} · ${ag.proxima}` : '—'}${ag && ag.depois ? `<span class="meta-l">+${ag.depois} depois</span>` : ''}</div>`
       + comMeta(R, 'reunioes')
       + (() => {
-        const ns = noShow(A, R);
+        const ns = noShow(A, N);
         return `<div class="c">${!semDado && ns.base ? sdPct(ns.taxa) + `<span class="meta-l">${ns.faltas} de ${ns.base}</span>` : '—'}</div>`;
       })()
       + `<div class="c mut">${v(V)}</div>`
@@ -2074,9 +2074,9 @@ function renderSdr(j, agenda, agendaAtual) {
     const C = NS.conferencia;
     document.getElementById('sdNsInfo').innerHTML = (C
       ? `<b>Conferência do período:</b> LeadForge registrou ${C.realizadasNoLeadForge} realizadas e ${C.noshowNoLeadForge} no-shows · `
-        + `no mapa: ${C.realizadas} realizadas + <b>${C.noshow} no-shows (${sdPct((C.realizadas + C.noshow) ? C.noshow / (C.realizadas + C.noshow) : null)})</b>`
-        + ` · ${C.semRegistro} reuniões da agenda sem registro (fora da conta)<br>` : '')
-      + 'No-show = reunião que caiu no funil "Rastreio - No-Show"; % = no-shows ÷ (realizadas + no-shows). '
+        + `no mapa: ${C.reunioesAgenda} reuniões agendadas = ${C.realizadas} realizadas + <b>${C.noshow} no-shows (${sdPct(C.reunioesAgenda ? C.noshow / C.reunioesAgenda : null)})</b>`
+        + ` + ${C.semRegistro} sem registro<br>` : '')
+      + 'No-show = reunião que caiu no funil "Rastreio - No-Show"; % = no-shows ÷ reuniões agendadas. '
       + `${NS.casadasPelaPessoa} registros casados com o evento pela pessoa; os demais, pela contagem do dia`
       + (NS.diasForaApagao && NS.diasForaApagao.length ? ` · ${NS.diasForaApagao.length} dia(s) do apagão de ago/26 fora da conta` : '') + '.';
   }

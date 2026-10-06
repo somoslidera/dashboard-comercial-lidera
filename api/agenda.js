@@ -132,7 +132,7 @@ export default async function handler(req, res) {
 
   // ── NO-SHOW por dia da semana e turno.
   // Regra do comercial: NO-SHOW = reunião que caiu no funil "Rastreio - No-Show"; REALIZADA = marcada como "Reunião realizada".
-  // Taxa = no-shows ÷ (realizadas + no-shows). Reunião da agenda sem nenhum dos dois registros não entra na conta.
+  // Taxa = no-shows ÷ reuniões agendadas na agenda (reunião sem nenhum registro conta como agendada, não como no-show).
   // Pra saber o dia/turno, cada registro é casado com o evento da agenda:
   //   • pela PESSOA (e-mail do convidado ou nome): realizadas antigas via API (fxs:r → cache rx:), novas via rl:{mes};
   //     no-shows a partir do registro nsl:{mes} do webhook;
@@ -253,7 +253,7 @@ export default async function handler(req, res) {
     conferencia.reunioesAgenda++;
     if (s === 'ok') conferencia.realizadas++;
     else if (s === 'noshow') conferencia.noshow++;
-    else { conferencia.semRegistro++; return; }
+    else conferencia.semRegistro++;                       // agendada, mas não é no-show (entra só no denominador)
     conta(slots, new Date(e.inicio).getUTCDay() + '-' + turno(e.inicio), s === 'noshow');
     conta(porDow, new Date(e.inicio).getUTCDay(), s === 'noshow');
   });
