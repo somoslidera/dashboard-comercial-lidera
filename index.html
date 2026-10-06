@@ -2016,7 +2016,7 @@ function renderSdr(j, agenda, agendaAtual) {
         const ns = noShow(A, N);
         if (semDado) return '<div class="c">—</div>';
         // mais no-shows que agendamentos (reuniões agendadas em semanas anteriores): % acima de 100% não diz nada
-        if (N > A) return `<div class="c" title="no-shows de reuniões agendadas em semanas anteriores">—<span class="meta-l">${N} no-show · ${A} agend.</span></div>`;
+        if (N > A) return `<div class="c" title="${N} no-shows e ${A} agendamento(s) na semana: os no-shows são de reuniões agendadas em semanas anteriores">—<span class="meta-l">${N} no-show</span></div>`;
         return `<div class="c">${ns.base ? sdPct(ns.taxa) + `<span class="meta-l">${ns.faltas} de ${ns.base}</span>` : '—'}</div>`;
       })()
       + `<div class="c mut">${v(V)}</div>`
