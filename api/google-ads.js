@@ -9,7 +9,7 @@
 //   GOOGLE_ADS_LOGIN_CUSTOMER_ID- (opcional) id da conta gerente/MCC, se houver
 import { autorizado } from './_auth.js';
 
-const API_VER = process.env.GOOGLE_ADS_API_VERSION || 'v18';
+const API_VER = process.env.GOOGLE_ADS_API_VERSION || 'v25';
 const DEV_TOKEN = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
 const CLIENT_ID = process.env.GOOGLE_ADS_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_ADS_CLIENT_SECRET;
