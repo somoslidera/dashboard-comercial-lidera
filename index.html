@@ -288,7 +288,7 @@
   .sd-plano .cad .seta{color:var(--text-3)}
   .sd-plano .info{color:var(--text-2);font-size:clamp(9px,1.15vh,12px)}
   .sd-plano .info strong{color:var(--text)}
-  .sd-heat{flex:1;display:grid;grid-template-columns:auto repeat(7,1fr);grid-template-rows:auto repeat(4,1fr);gap:clamp(3px,.5vh,6px);min-height:0}
+  .sd-heat{flex:1;display:grid;grid-template-columns:auto repeat(7,1fr);grid-template-rows:auto repeat(3,1fr);gap:clamp(3px,.5vh,6px);min-height:0}
   .sd-heat .hd{text-align:center;color:var(--text-2);font-weight:800;font-size:clamp(8px,1vh,11px);letter-spacing:.08em;text-transform:uppercase}
   .sd-heat .tl{display:flex;align-items:center;color:var(--text-2);font-weight:700;font-size:clamp(9px,1.1vh,12px);padding-right:6px}
   .sd-heat .cel{border-radius:8px;border:1px solid var(--line);background:rgb(240 143 143 / calc(var(--a,0) * .55));display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0;line-height:1.1}
@@ -2067,7 +2067,6 @@ function renderSdr(j, agenda, agendaAtual) {
         + `<b>${sdPct(taxa)}</b><small>${c.faltas} de ${c.reunioes}</small></div>`;
     };
     let html = '<div></div>' + DIAS.map((d) => `<div class="hd">${SD_DOW[d]}</div>`).join('');
-    html += '<div class="tl forte">Dia todo</div>' + DIAS.map((d) => cel(NS.dias[d])).join('');
     [['manha', 'Manhã'], ['tarde', 'Tarde'], ['noite', 'Noite']].forEach(([k, nome]) => {
       html += `<div class="tl">${nome}</div>` + DIAS.map((d) => cel(NS.slots[d + '-' + k])).join('');
     });
