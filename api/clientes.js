@@ -18,8 +18,8 @@ const DIAS_PADRAO = [1, 2, 3, 4, 5, 6];
 export const FAIXAS = {
   critico: { nome: 'Crítico', ordem: 0 },
   atencao: { nome: 'Atenção', ordem: 1 },
-  estrela: { nome: 'Estrela', ordem: 2 },
-  supernova: { nome: 'Supernova', ordem: 3 }
+  estrela: { nome: 'Meta', ordem: 2 },
+  supernova: { nome: 'Super Meta', ordem: 3 }
 };
 
 const isoDia = (d) => d.toISOString().slice(0, 10);

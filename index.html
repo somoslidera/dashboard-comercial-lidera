@@ -2192,13 +2192,13 @@ trocarView = function (v) {
 };
 
 const CL_ORDEM = ['critico', 'atencao', 'estrela', 'supernova'];
-const CL_ICONE = { critico: '🔴', atencao: '🟠', estrela: '⭐', supernova: '🚀', fora: '📋' };
+const CL_ICONE = { critico: '🔴', atencao: '🟠', estrela: '🎯', supernova: '🏆', fora: '📋' };
 const CL_COR = { critico: 'var(--c-critico)', atencao: 'var(--c-atencao)', estrela: 'var(--c-estrela)', supernova: 'var(--c-supernova)', fora: 'var(--c-fora)' };
 const CL_DESC = {
   critico: 'projeção abaixo da mínima (ou de 70% da realista)',
   atencao: 'acima da mínima, abaixo da realista',
-  estrela: 'projeção bate a meta realista',
-  supernova: 'projeção bate a meta desafiadora',
+  estrela: 'vai alcançar a Meta (realista)',
+  supernova: 'vai alcançar a Super Meta (desafiadora)',
   fora: 'sem meta cadastrada ou sem receita lançada'
 };
 const CL_MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -2276,7 +2276,7 @@ function clCartao(c, faixa) {
   const nomeProx = faixa === 'critico' ? (c.semMinima ? 'a 70% da realista' : 'a mínima') : faixa === 'atencao' ? 'a realista' : 'a desafiadora';
   const acao = c.fechado ? `Fechou o mês com <b>${clBrl(c.faturado)}</b>`
     : c.faltaPorDia ? `Pra chegar ${nomeProx}: <b>${clBrl(c.faltaPorDia)}/dia</b> ${c.diasRestantes === 1 ? 'no 1 dia que resta' : `nos ${c.diasRestantes} dias que restam`}`
-    : faixa === 'supernova' ? '<b>Acima da meta desafiadora</b>' : '';
+    : faixa === 'supernova' ? '<b>Vai passar da Super Meta</b>' : '';
   return `<div class="cl-cli" style="--cor:${cor}">
     <div class="top"><span class="nm" title="${clEsc(c.nome)}">${clEsc(c.nome)}</span><span class="pct" title="projeção ÷ meta ${ref.nome}">${clPct(ref.valor ? c.projecao / ref.valor * 100 : null)}</span></div>${cons}
     <div class="cl-barra"><div class="proj" style="width:${w(c.projecao)}"></div><div class="fat" style="width:${w(c.faturado)}"></div>${mk('min', c.metas.minimo, 'Mínima')}${mk('rea', c.metas.realista, 'Realista')}${mk('des', c.metas.desafiador, 'Desafiadora')}</div>
