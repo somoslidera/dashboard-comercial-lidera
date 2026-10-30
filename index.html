@@ -304,6 +304,42 @@
   .sd-heat .tl.forte{color:var(--gold-soft)}
   .sd-heat .cel.vazia{color:var(--text-3);background:rgba(255,255,255,.02)}
   .sd-vazio{grid-column:1/-1;grid-row:1/-1;display:grid;place-items:center;text-align:center;color:var(--text-2);font-size:clamp(10px,1.3vh,14px);padding:0 10%}
+
+  /* ── PAINEL CLIENTES (metas do Flow) ── */
+  #viewClientes{--c-critico:#E8836B;--c-atencao:#F0B860;--c-estrela:#E6D19A;--c-supernova:#4FD1A5;--c-fora:#9DB0CE}
+  .cl-resumo{flex:0 0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap)}
+  .cl-res{padding:clamp(10px,1.5vh,16px) clamp(12px,1.2vw,20px);display:flex;align-items:center;gap:12px;border-top:3px solid var(--cor)}
+  .cl-res .ic{font-size:clamp(18px,2.8vh,30px)}
+  .cl-res .n{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(24px,4.2vh,44px);line-height:1;color:var(--cor)}
+  .cl-res .t{font-weight:800;font-size:clamp(9px,1.2vh,12px);letter-spacing:.12em;text-transform:uppercase}
+  .cl-res .d{color:var(--text-3);font-size:clamp(8px,1.05vh,11px);font-weight:600;margin-top:2px}
+  .cl-quadro{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap);min-height:0}
+  .cl-col{display:flex;flex-direction:column;min-height:0;padding:clamp(10px,1.3vh,14px)}
+  .cl-col h2{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(13px,1.9vh,19px);display:flex;align-items:center;gap:8px;margin-bottom:clamp(8px,1.1vh,12px);color:var(--cor)}
+  .cl-col h2 small{font-family:'Figtree',sans-serif;font-size:.6em;font-weight:700;color:var(--text-3);letter-spacing:.06em}
+  .cl-sub{font-size:clamp(8px,1vh,11px);font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);margin:4px 0 2px}
+  .cl-lista{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:clamp(6px,.8vh,9px);padding-right:4px;min-height:0}
+  .cl-lista::-webkit-scrollbar{width:6px}.cl-lista::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:6px}
+  .cl-vazio{color:var(--text-3);font-size:12px;text-align:center;padding:16px 6px}
+  .cl-cli{background:rgba(255,255,255,.025);border:1px solid var(--line);border-left:3px solid var(--cor);border-radius:11px;padding:clamp(7px,1.1vh,11px) clamp(9px,.9vw,13px);display:flex;flex-direction:column;gap:5px}
+  .cl-cli .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .cl-cli .nm{font-weight:700;font-size:clamp(11px,1.5vh,15px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cl-cli .pct{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(14px,2vh,21px);color:var(--cor);white-space:nowrap}
+  .cl-cli .cons{color:var(--text-3);font-size:clamp(8px,1.05vh,11px);font-weight:600;margin-top:-4px}
+  .cl-barra{position:relative;height:7px;border-radius:7px;background:rgba(0,0,0,.35);margin:3px 0 1px}
+  .cl-barra .proj{position:absolute;inset:0 auto 0 0;border-radius:7px;background:var(--cor);opacity:.35}
+  .cl-barra .fat{position:absolute;inset:0 auto 0 0;border-radius:7px;background:var(--cor)}
+  .cl-barra .mk{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:2px}
+  .cl-barra .mk.min{background:var(--c-atencao)}.cl-barra .mk.rea{background:var(--blue)}.cl-barra .mk.des{background:var(--c-supernova)}
+  .cl-cli .linha{display:flex;justify-content:space-between;gap:8px;font-size:clamp(9px,1.2vh,12px);color:var(--text-2)}
+  .cl-cli .linha b{color:var(--text);font-weight:700}
+  .cl-cli .res{display:flex;justify-content:space-between;gap:8px;font-size:clamp(10px,1.25vh,13px);border-top:1px dashed var(--line);padding-top:5px;margin-top:1px;color:var(--text-2)}
+  .cl-cli .res b{font-family:'Fraunces',serif;font-weight:600}
+  .cl-cli .res .pos{color:#8ff0cf}.cl-cli .res .neg{color:#f08f8f}
+  .cl-cli .acao{font-size:clamp(9px,1.15vh,12px);color:var(--text-2)}
+  .cl-cli .acao b{color:var(--cor)}
+  .cl-selo{display:inline-block;font-size:clamp(7px,.95vh,10px);font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:100px;background:rgba(240,184,96,.12);color:#F0B860;border:1px solid rgba(240,184,96,.3);margin-right:4px}
+  .cl-aviso{grid-column:1/-1;display:grid;place-items:center;text-align:center;color:var(--text-2);font-size:clamp(13px,1.8vh,18px);line-height:1.6;padding:0 15%}
 </style>
 </head>
 <body>
@@ -551,6 +587,39 @@
     <span id="sdStatus">Carregando…</span>
     <span>1 SDR · semana de domingo a sábado</span>
     <span>Atualização automática a cada 5 minutos</span>
+  </footer>
+</div>
+
+<!-- ══════════════════ PAINEL CLIENTES (metas de faturamento do Flow) ══════════════════ -->
+<div class="dashboard" id="viewClientes" hidden>
+  <header>
+    <div class="brand-block">
+      <div class="overline">Carteira de Clientes</div>
+      <div class="brand">Lidera <span>Soluções</span></div>
+    </div>
+    <div class="title">Metas de faturamento · <b id="clTituloMes">—</b></div>
+    <div class="header-controls">
+      <div class="mes-filtro-wrap">
+        <select class="mes-filtro view-select" aria-label="Escolher painel">
+          <option value="vendas">Comercial</option>
+          <option value="marketing">Marketing</option>
+          <option value="sdr">SDR</option>
+          <option value="clientes">Clientes</option>
+        </select>
+      </div>
+      <div class="mes-filtro-wrap">
+        <select class="mes-filtro" id="clMes" aria-label="Mês"></select>
+      </div>
+    </div>
+  </header>
+
+  <section class="cl-resumo" id="clResumo"></section>
+  <section class="cl-quadro" id="clQuadro"></section>
+
+  <footer>
+    <span id="clStatus">Carregando…</span>
+    <span>Projeção = ritmo de vendas × dias de funcionamento · Resultado = receitas − despesas, contas do mês e taxas (mesma conta do Flow)</span>
+    <span>Atualiza a cada 10 minutos</span>
   </footer>
 </div>
 
@@ -2101,6 +2170,152 @@ function renderSdr(j, agenda, agendaAtual) {
   }
 
   mS('sdStatus', 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PAINEL CLIENTES — metas de faturamento do Flow
+   Isolado: lê só /api/clientes e só mexe nos elementos #cl*.
+   ═══════════════════════════════════════════════════════════ */
+VIEWS.clientes = document.getElementById('viewClientes');
+document.querySelectorAll('.view-select').forEach((s) => {
+  if (!s.querySelector('option[value="clientes"]')) s.add(new Option('Clientes', 'clientes'));
+});
+if (location.pathname.replace(/\/+$/, '') === '/clientes') viewAtiva = 'clientes';   // link direto /clientes
+let clIntervalo = null;
+const trocarViewAntesClientes = trocarView;
+trocarView = function (v) {
+  trocarViewAntesClientes(v);
+  if (viewAtiva === 'clientes') {
+    carregarClientes();
+    if (!clIntervalo) clIntervalo = setInterval(() => { if (viewAtiva === 'clientes') carregarClientes(); }, 10 * 60 * 1000);
+  }
+};
+
+const CL_ORDEM = ['critico', 'atencao', 'estrela', 'supernova'];
+const CL_ICONE = { critico: '🔴', atencao: '🟠', estrela: '⭐', supernova: '🚀', fora: '📋' };
+const CL_COR = { critico: 'var(--c-critico)', atencao: 'var(--c-atencao)', estrela: 'var(--c-estrela)', supernova: 'var(--c-supernova)', fora: 'var(--c-fora)' };
+const CL_DESC = {
+  critico: 'projeção abaixo da mínima (ou de 70% da realista)',
+  atencao: 'acima da mínima, abaixo da realista',
+  estrela: 'projeção bate a meta realista',
+  supernova: 'projeção bate a meta desafiadora',
+  fora: 'sem meta cadastrada ou sem receita lançada'
+};
+const CL_MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const clBrl = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+const clPct = (v) => (v == null || !isFinite(v)) ? '—' : v.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+const clDDMM = (d) => d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '';
+const clEsc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+let clMesSel = '';
+(function () {
+  const agora = new Date(Date.now() - 3 * 3600 * 1000);
+  const ops = [];
+  for (let k = 0; k < 6; k++) {
+    const d = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() - k, 1));
+    ops.push(`<option value="${k ? d.toISOString().slice(0, 7) : ''}">${CL_MESES[d.getUTCMonth()]} ${d.getUTCFullYear()}${k ? '' : ' (atual)'}</option>`);
+  }
+  const sel = document.getElementById('clMes');
+  sel.innerHTML = ops.join('');
+  sel.addEventListener('change', () => { clMesSel = sel.value; carregarClientes(); });
+})();
+
+let clSeq = 0;
+async function carregarClientes() {
+  const meu = ++clSeq;
+  let j;
+  try {
+    const r = await fetch('/api/clientes' + (clMesSel ? '?mes=' + clMesSel : ''), { cache: 'no-store' });
+    if (r.status === 401) { location.href = '/login.html?volta=/clientes'; return; }
+    j = await r.json();
+  } catch (e) { mS('clStatus', 'Sem conexão — tentando novamente…'); return; }
+  if (meu !== clSeq) return;
+  if (j.erro) {
+    const msg = j.erro === 'sem_acesso_flow'
+      ? 'A conexão com o banco do Flow ainda não foi configurada.<br>Falta a variável <b>FLOW_DATABASE_URL</b> no Vercel.'
+      : 'Não consegui ler o Flow agora.<br><small>' + clEsc(j.detalhe || j.erro) + '</small>';
+    document.getElementById('clResumo').innerHTML = '';
+    document.getElementById('clQuadro').innerHTML = `<div class="card cl-aviso">${msg}</div>`;
+    mS('clStatus', 'Sem dados do Flow');
+    return;
+  }
+  renderClientes(j);
+}
+
+// meta de referência do cartão: mínima (ou 70% da realista) no crítico, desafiadora na supernova, realista no resto
+function clReferencia(c) {
+  if (c.faixa === 'critico') return c.semMinima ? { nome: '70% da realista', valor: c.metas.realista * 0.7 } : { nome: 'mínima', valor: c.metas.minimo };
+  if (c.faixa === 'supernova') return { nome: 'desafiadora', valor: c.metas.desafiador };
+  return { nome: 'realista', valor: c.metas.realista || c.metas.minimo };
+}
+
+function clResultado(c) {
+  const r = c.resultado || {};
+  if (!r.temLancamento) return '<div class="res"><span>Resultado</span><span>sem lançamento no mês</span></div>';
+  return `<div class="res" title="receitas ${clBrl(r.receitas)} − despesas, contas do mês e taxas ${clBrl(r.despesas)}">`
+    + `<span>Resultado</span><span><b class="${r.valor >= 0 ? 'pos' : 'neg'}">${clBrl(r.valor)}</b>${r.pct != null ? ` · ${clPct(r.pct)}` : ''}</span></div>`;
+}
+
+function clCartao(c, faixa) {
+  const cor = CL_COR[faixa];
+  const cons = c.consultor ? `<div class="cons">${clEsc(c.consultor)}</div>` : '';
+  if (faixa === 'fora') {
+    const motivo = c.faixa === 'semMeta' ? 'cadastrar meta no Flow' : `sem receita lançada · meta realista ${clBrl(c.metas.realista)}`;
+    return `<div class="cl-cli" style="--cor:${cor}">
+      <div class="top"><span class="nm" title="${clEsc(c.nome)}">${clEsc(c.nome)}</span></div>${cons}
+      <div class="linha"><span>Faturado <b>${clBrl(c.faturado)}</b></span><span>${c.faturado ? clBrl(c.ritmo) + '/dia' : ''}</span></div>
+      ${clResultado(c)}
+      <div class="acao">${motivo}</div></div>`;
+  }
+  const ref = clReferencia(c);
+  const escala = Math.max(c.projecao, c.metas.desafiador, c.metas.realista, c.metas.minimo, 1) * 1.05;
+  const w = (v) => Math.min(100, (v / escala) * 100).toFixed(1) + '%';
+  const mk = (cls, v, nome) => (v > 0 ? `<div class="mk ${cls}" style="left:${w(v)}" title="${nome}: ${clBrl(v)}"></div>` : '');
+  const selos = (c.atrasoDias >= 3 ? `<span class="cl-selo" title="Projeção calculada até o último lançamento de receita">receita lançada até ${clDDMM(c.ultimoLancamento)}</span>` : '')
+    + (c.inicioDoMes ? '<span class="cl-selo" title="Poucos dias no mês: a projeção ainda oscila muito">início do mês</span>' : '');
+  const nomeProx = faixa === 'critico' ? (c.semMinima ? 'a 70% da realista' : 'a mínima') : faixa === 'atencao' ? 'a realista' : 'a desafiadora';
+  const acao = c.fechado ? `Fechou o mês com <b>${clBrl(c.faturado)}</b>`
+    : c.faltaPorDia ? `Pra chegar ${nomeProx}: <b>${clBrl(c.faltaPorDia)}/dia</b> ${c.diasRestantes === 1 ? 'no 1 dia que resta' : `nos ${c.diasRestantes} dias que restam`}`
+    : faixa === 'supernova' ? '<b>Acima da meta desafiadora</b>' : '';
+  return `<div class="cl-cli" style="--cor:${cor}">
+    <div class="top"><span class="nm" title="${clEsc(c.nome)}">${clEsc(c.nome)}</span><span class="pct" title="projeção ÷ meta ${ref.nome}">${clPct(ref.valor ? c.projecao / ref.valor * 100 : null)}</span></div>${cons}
+    <div class="cl-barra"><div class="proj" style="width:${w(c.projecao)}"></div><div class="fat" style="width:${w(c.faturado)}"></div>${mk('min', c.metas.minimo, 'Mínima')}${mk('rea', c.metas.realista, 'Realista')}${mk('des', c.metas.desafiador, 'Desafiadora')}</div>
+    <div class="linha"><span>Projeção <b>${clBrl(c.projecao)}</b></span><span>meta ${ref.nome} ${clBrl(ref.valor)}</span></div>
+    <div class="linha"><span>Faturado <b>${clBrl(c.faturado)}</b></span><span>${clBrl(c.ritmo)}/dia</span></div>
+    ${clResultado(c)}
+    ${acao ? `<div class="acao">${acao}</div>` : ''}
+    ${selos ? `<div>${selos}</div>` : ''}</div>`;
+}
+
+function renderClientes(j) {
+  const [y, m] = j.mes.split('-').map(Number);
+  mS('clTituloMes', CL_MESES[m - 1] + ' ' + y);
+  const por = {};
+  j.clientes.forEach((c) => { (por[c.faixa] = por[c.faixa] || []).push(c); });
+  const razao = (c) => { const r = clReferencia(c).valor; return r ? c.projecao / r : 0; };
+  CL_ORDEM.forEach((f) => (por[f] || []).sort((a, b) => (f === 'estrela' || f === 'supernova') ? razao(b) - razao(a) : razao(a) - razao(b)));
+  const semMeta = (por.semMeta || []).slice().sort((a, b) => b.faturado - a.faturado);
+  const semLanc = (por.semLancamento || []).slice().sort((a, b) => a.nome.localeCompare(b.nome));
+  const nome = (f) => (j.faixas[f] && j.faixas[f].nome) || 'Fora da régua';
+
+  document.getElementById('clResumo').innerHTML = [...CL_ORDEM, 'fora'].map((f) => {
+    const n = f === 'fora' ? semMeta.length + semLanc.length : (por[f] || []).length;
+    return `<div class="card cl-res" style="--cor:${CL_COR[f]}"><span class="ic">${CL_ICONE[f]}</span>
+      <div class="n">${n}</div><div><div class="t">${clEsc(nome(f))}</div><div class="d">${CL_DESC[f]}</div></div></div>`;
+  }).join('');
+
+  const coluna = (f, conteudo, n) => `<div class="card cl-col" style="--cor:${CL_COR[f]}">
+    <h2>${CL_ICONE[f]} ${clEsc(nome(f))} <small>${n} cliente${n === 1 ? '' : 's'}</small></h2><div class="cl-lista">${conteudo}</div></div>`;
+  const vazio = '<div class="cl-vazio">Nenhum cliente aqui</div>';
+  document.getElementById('clQuadro').innerHTML = CL_ORDEM.map((f) => {
+    const l = por[f] || [];
+    return coluna(f, l.length ? l.map((c) => clCartao(c, f)).join('') : vazio, l.length);
+  }).join('') + coluna('fora',
+    (semMeta.length ? `<div class="cl-sub">Sem meta cadastrada (${semMeta.length})</div>` + semMeta.map((c) => clCartao(c, 'fora')).join('') : '')
+    + (semLanc.length ? `<div class="cl-sub">Com meta, sem receita no mês (${semLanc.length})</div>` + semLanc.map((c) => clCartao(c, 'fora')).join('') : '')
+    || vazio, semMeta.length + semLanc.length);
+
+  mS('clStatus', 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' · ' + j.clientes.length + ' clientes no Flow');
 }
 
 carregarDados();

@@ -31,7 +31,32 @@ function diasTrabEntre(de, ate, ds) {
 }
 const num = (v) => { const n = typeof v === 'string' ? parseFloat(v.replace(',', '.')) : +v; return isFinite(n) ? n : 0; };
 
-// classifica UM cliente. org = { id, nome, consultor, metas, diasTrab, catTipos, lanc }
+// RESULTADO do mês = mesma conta do Dashboard do Flow (dashCentros):
+//   receitas − despesas lançadas − contas a pagar em aberto que vencem no mês − taxas de recebimento.
+// Período = o mês inteiro, como o Flow (inclui conta que ainda vai vencer no mês).
+export function resultadoDoMes(org, ini, fim) {
+  const tipos = org.catTipos || {};
+  const ehReceita = (g) => tipos[g] === 'receita';                 // categoria desconhecida = despesa (como o Flow)
+  const ls = (org.lanc || []).filter((l) => l.data >= ini && l.data <= fim);
+  const rec = ls.filter((l) => ehReceita(l.grupo)).reduce((s, l) => s + num(l.valor), 0);
+  const despLanc = ls.filter((l) => !ehReceita(l.grupo)).reduce((s, l) => s + num(l.valor), 0);
+  const contas = (org.contasAbertas || []).filter((c) => !ehReceita(c.grupo)).reduce((s, c) => s + num(c.valor), 0);
+  let taxas = 0;
+  if (org.receitaBruta !== false) {                                // padrão do Flow: receita lançada é bruta
+    const meios = (org.meios || []).filter((m) => m && m.id);
+    const nm = (x) => String(x || '').trim().toLowerCase();
+    ls.filter((l) => ehReceita(l.grupo)).forEach((l) => {
+      const m = (l.meioId && meios.find((x) => x.id === l.meioId)) || meios.find((x) => [nm(l.sub), nm(l.forma)].filter(Boolean).includes(nm(x.nome)));
+      const pct = Math.max(0, num(m && m.taxa));
+      if (pct > 0) taxas += num(l.valor) * pct / 100;
+    });
+  }
+  const despesas = despLanc + contas + taxas;
+  const valor = rec - despesas;
+  return { receitas: rec, despesas, valor, pct: rec > 0 ? valor / rec * 100 : null, temLancamento: ls.length > 0 || contas > 0 };
+}
+
+// classifica UM cliente. org = { id, nome, consultor, metas, diasTrab, catTipos, lanc, contasAbertas, meios, receitaBruta }
 export function analisarCliente(org, { mes, hoje }) {
   const [y, m] = mes.split('-').map(Number);
   const ini = `${mes}-01`, fim = `${mes}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}`;
@@ -57,7 +82,8 @@ export function analisarCliente(org, { mes, hoje }) {
   const base = {
     id: org.id, nome: org.nome || '—', consultor: org.consultor || null,
     faturado, projecao, ritmo, ultimoLancamento: ultimo || null, atrasoDias,
-    diasMes, diasDecorridos: decorr, metas, fechado
+    diasMes, diasDecorridos: decorr, metas, fechado,
+    resultado: resultadoDoMes(org, ini, fim)
   };
   if (!temMeta) return { ...base, faixa: 'semMeta' };
   if (!receitas.length) return { ...base, faixa: 'semLancamento' };
@@ -88,9 +114,19 @@ select o.id, o.nome, p.nome as consultor,
   o.dados->'fin'->'diasTrabalho' as dias_trab,
   case when jsonb_typeof(o.dados->'categorias') = 'object'
     then (select jsonb_object_agg(k, v->'tipo') from jsonb_each(o.dados->'categorias') c(k, v)) end as cat_tipos,
-  (select coalesce(jsonb_agg(jsonb_build_object('data', l->>'data', 'grupo', l->>'grupo', 'valor', l->'valor')), '[]'::jsonb)
+  (select coalesce(jsonb_agg(jsonb_build_object('data', l->>'data', 'grupo', l->>'grupo', 'valor', l->'valor',
+          'sub', l->>'sub', 'forma', l->>'forma', 'meioId', l->>'meioId')), '[]'::jsonb)
      from jsonb_array_elements(case when jsonb_typeof(o.dados->'lancamentos') = 'array' then o.dados->'lancamentos' else '[]'::jsonb end) l
-    where l->>'data' >= $3 and l->>'data' <= $4) as lanc
+    where l->>'data' >= $3 and l->>'data' <= $4) as lanc,
+  -- contas a pagar em aberto que vencem no mês e ainda não viraram lançamento (contasAbertas do Flow)
+  (select coalesce(jsonb_agg(jsonb_build_object('grupo', c->>'grupo', 'valor', c->'valor')), '[]'::jsonb)
+     from jsonb_array_elements(case when jsonb_typeof(o.dados->'fin'->'contasPagar') = 'array' then o.dados->'fin'->'contasPagar' else '[]'::jsonb end) c
+    where coalesce(c->>'pago', 'false') not in ('true', '1')
+      and c->>'vencimento' >= $3 and c->>'vencimento' <= $4
+      and not exists (select 1 from jsonb_array_elements(case when jsonb_typeof(o.dados->'lancamentos') = 'array' then o.dados->'lancamentos' else '[]'::jsonb end) l2
+                       where l2->>'fromConta' = c->>'id')) as contas_abertas,
+  case when jsonb_typeof(o.dados->'fin'->'meios') = 'array' then o.dados->'fin'->'meios' end as meios,
+  o.dados->'fin'->'receitaBruta' as receita_bruta
 from public.organizacoes o
 left join public.perfis p on p.id = o.consultor_id
 where coalesce(o.dados->>'_demo', 'false') not in ('true', '1')
@@ -122,7 +158,8 @@ export default async function handler(req, res) {
   }
 
   const clientes = linhas.map((r) => analisarCliente({
-    id: r.id, nome: r.nome, consultor: r.consultor, metas: r.metas, diasTrab: r.dias_trab, catTipos: r.cat_tipos, lanc: r.lanc
+    id: r.id, nome: r.nome, consultor: r.consultor, metas: r.metas, diasTrab: r.dias_trab, catTipos: r.cat_tipos, lanc: r.lanc,
+    contasAbertas: r.contas_abertas, meios: r.meios, receitaBruta: r.receita_bruta
   }, { mes, hoje }));
 
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=600');
