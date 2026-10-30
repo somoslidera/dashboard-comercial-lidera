@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carteira de Clientes — Lidera Soluções</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#0A1322; --bg-1:#0E1B30; --surface:#13233F;
+    --line:rgba(255,255,255,0.07); --line-strong:rgba(255,255,255,0.13);
+    --text:#EAF0FA; --text-2:#9DB0CE; --text-3:#66799A;
+    --gold:#CBA75E; --gold-soft:#E6D19A; --teal:#4FD1A5; --blue:#6AA0F5;
+    --c-critico:#E8836B; --c-atencao:#F0B860; --c-estrela:#E6D19A; --c-supernova:#4FD1A5;
+    --gap:clamp(10px,1.1vw,20px);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden}
+  body{background:radial-gradient(90vw 65vh at 50% -18%,#16294a 0%,var(--bg-1) 45%,var(--bg-0) 100%);color:var(--text);font-family:'Figtree',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .pagina{height:100vh;display:flex;flex-direction:column;padding:clamp(14px,2.4vh,26px) clamp(18px,2vw,34px);gap:clamp(10px,1.6vh,20px)}
+
+  header{display:flex;align-items:center;justify-content:space-between;gap:2vw;flex:0 0 auto}
+  .overline{font-size:clamp(9px,1.1vh,12px);font-weight:700;text-transform:uppercase;letter-spacing:.32em;color:var(--gold)}
+  .brand{font-family:'Fraunces',serif;font-size:clamp(20px,3.2vh,34px);font-weight:600;line-height:1.05}
+  .brand span{color:var(--gold-soft);font-style:italic;font-weight:400}
+  .title{font-size:clamp(12px,1.7vh,17px);color:var(--text-2);font-weight:500}
+  .title b{color:var(--text)}
+  .controles{display:flex;gap:10px;align-items:center}
+  .ctl{appearance:none;background:var(--surface);border:1px solid var(--line-strong);color:var(--text);font-family:inherit;font-weight:600;font-size:clamp(12px,1.5vh,15px);padding:.55em 1em;border-radius:10px;cursor:pointer;text-decoration:none}
+  .ctl:hover{border-color:var(--gold)}
+
+  .card{background:linear-gradient(180deg,var(--surface) 0%,var(--bg-1) 150%);border:1px solid var(--line);border-radius:16px;position:relative}
+
+  .resumo{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap)}
+  .res{padding:clamp(10px,1.6vh,18px) clamp(14px,1.4vw,22px);display:flex;align-items:center;gap:14px;border-top:3px solid var(--cor)}
+  .res .ic{font-size:clamp(20px,3vh,32px)}
+  .res .n{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(26px,4.4vh,46px);line-height:1;color:var(--cor)}
+  .res .t{font-weight:800;font-size:clamp(10px,1.25vh,13px);letter-spacing:.12em;text-transform:uppercase;color:var(--text)}
+  .res .d{color:var(--text-3);font-size:clamp(9px,1.1vh,12px);font-weight:600;margin-top:2px}
+
+  .quadro{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap);min-height:0}
+  .col{display:flex;flex-direction:column;min-height:0;padding:clamp(10px,1.4vh,16px)}
+  .col h2{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(14px,2vh,20px);display:flex;align-items:center;gap:8px;margin-bottom:clamp(8px,1.2vh,14px);color:var(--cor)}
+  .col h2 small{font-family:'Figtree',sans-serif;font-size:.6em;font-weight:700;color:var(--text-3);letter-spacing:.06em}
+  .lista{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:clamp(6px,.9vh,10px);padding-right:4px;min-height:0}
+  .lista::-webkit-scrollbar{width:6px}.lista::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:6px}
+  .vazio{color:var(--text-3);font-size:13px;text-align:center;padding:20px 8px}
+
+  .cli{background:rgba(255,255,255,.025);border:1px solid var(--line);border-left:3px solid var(--cor);border-radius:12px;padding:clamp(8px,1.2vh,12px) clamp(10px,1vw,14px);display:flex;flex-direction:column;gap:6px}
+  .cli .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .cli .nm{font-weight:700;font-size:clamp(12px,1.55vh,16px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cli .pct{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(15px,2.1vh,22px);color:var(--cor);white-space:nowrap}
+  .cli .cons{color:var(--text-3);font-size:clamp(9px,1.1vh,11px);font-weight:600;margin-top:-4px}
+  .barra{position:relative;height:8px;border-radius:8px;background:rgba(0,0,0,.35);margin:4px 0 2px}
+  .barra .proj{position:absolute;inset:0 auto 0 0;border-radius:8px;background:var(--cor);opacity:.35}
+  .barra .fat{position:absolute;inset:0 auto 0 0;border-radius:8px;background:var(--cor)}
+  .barra .mk{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:2px}
+  .barra .mk.min{background:var(--c-atencao)}.barra .mk.rea{background:var(--blue)}.barra .mk.des{background:var(--c-supernova)}
+  .cli .linha{display:flex;justify-content:space-between;gap:8px;font-size:clamp(10px,1.25vh,13px);color:var(--text-2)}
+  .cli .linha b{color:var(--text);font-weight:700}
+  .cli .acao{font-size:clamp(10px,1.2vh,12px);color:var(--text-2)}
+  .cli .acao b{color:var(--cor)}
+  .selo{display:inline-block;font-size:clamp(8px,1vh,10px);font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:100px;background:rgba(240,184,96,.12);color:var(--c-atencao);border:1px solid rgba(240,184,96,.3);margin-right:4px}
+
+  .rodape-faixas{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;gap:var(--gap)}
+  .rf{padding:clamp(8px,1.2vh,12px) clamp(14px,1.4vw,20px);font-size:clamp(10px,1.25vh,13px);color:var(--text-2);line-height:1.5}
+  .rf b{color:var(--text);font-weight:700}
+  .rf .tt{color:var(--gold);font-weight:800;font-size:.85em;letter-spacing:.12em;text-transform:uppercase;margin-right:6px}
+  footer{flex:0 0 auto;display:flex;justify-content:space-between;font-size:clamp(9px,1.2vh,12px);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);border-top:1px solid var(--line);padding-top:clamp(8px,1.2vh,14px)}
+  .aviso{flex:1;display:grid;place-items:center;text-align:center;color:var(--text-2);font-size:clamp(13px,1.8vh,18px);line-height:1.6;padding:0 15%}
+
+  @media (max-width:900px){
+    html,body{overflow:auto;height:auto}.pagina{height:auto}
+    .resumo,.quadro{grid-template-columns:1fr 1fr}.rodape-faixas{grid-template-columns:1fr}
+    .lista{overflow:visible}header{flex-wrap:wrap}
+  }
+</style>
+</head>
+<body>
+<div class="pagina">
+  <header>
+    <div>
+      <div class="overline">Carteira de Clientes</div>
+      <div class="brand">Lidera <span>Soluções</span></div>
+    </div>
+    <div class="title">Metas de faturamento · <b id="tituloMes">—</b></div>
+    <div class="controles">
+      <select class="ctl" id="selMes" aria-label="Mês"></select>
+      <a class="ctl" href="/">← Painel</a>
+    </div>
+  </header>
+
+  <section class="resumo" id="resumo"></section>
+  <section class="quadro" id="quadro"></section>
+  <section class="rodape-faixas" id="rodape"></section>
+
+  <footer>
+    <span id="status">Carregando…</span>
+    <span>Projeção = ritmo de vendas × dias de funcionamento do mês (mesma conta do Flow)</span>
+    <span>Atualiza a cada 10 minutos</span>
+  </footer>
+</div>
+
+<script>
+const ORDEM = ['critico', 'atencao', 'estrela', 'supernova'];
+const ICONE = { critico: '🔴', atencao: '🟠', estrela: '⭐', supernova: '🚀' };
+const COR = { critico: 'var(--c-critico)', atencao: 'var(--c-atencao)', estrela: 'var(--c-estrela)', supernova: 'var(--c-supernova)' };
+const DESC = {
+  critico: 'projeção abaixo da mínima (ou de 70% da realista)',
+  atencao: 'acima da mínima, abaixo da realista',
+  estrela: 'projeção bate a meta realista',
+  supernova: 'projeção bate a meta desafiadora'
+};
+const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const brl0 = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+const pct = (v) => (v == null || !isFinite(v)) ? '—' : v.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+const ddmm = (d) => d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '';
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const $ = (id) => document.getElementById(id);
+
+// meses: atual + 5 anteriores
+let mesSel = '';
+(function () {
+  const agora = new Date(Date.now() - 3 * 3600 * 1000);
+  const ops = [];
+  for (let k = 0; k < 6; k++) {
+    const d = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() - k, 1));
+    const v = d.toISOString().slice(0, 7);
+    ops.push(`<option value="${k ? v : ''}">${MESES[d.getUTCMonth()]} ${d.getUTCFullYear()}${k ? '' : ' (atual)'}</option>`);
+  }
+  $('selMes').innerHTML = ops.join('');
+  $('selMes').addEventListener('change', (e) => { mesSel = e.target.value; carregar(); });
+})();
+
+let seq = 0;
+async function carregar() {
+  const meu = ++seq;
+  let j;
+  try {
+    const r = await fetch('/api/clientes' + (mesSel ? '?mes=' + mesSel : ''), { cache: 'no-store' });
+    if (r.status === 401) { location.href = '/login.html?volta=/clientes'; return; }
+    j = await r.json();
+  } catch (e) { $('status').textContent = 'Sem conexão — tentando novamente…'; return; }
+  if (meu !== seq) return;
+  if (j.erro) return aviso(j);
+  render(j);
+}
+
+function aviso(j) {
+  const msg = j.erro === 'sem_acesso_flow'
+    ? 'A conexão com o banco do Flow ainda não foi configurada.<br>Falta a variável <b>FLOW_DATABASE_URL</b> no Vercel.'
+    : 'Não consegui ler o Flow agora.<br><small>' + esc(j.detalhe || j.erro) + '</small>';
+  $('resumo').innerHTML = ''; $('rodape').innerHTML = '';
+  $('quadro').innerHTML = `<div class="aviso card" style="grid-column:1/-1">${msg}</div>`;
+  $('status').textContent = 'Sem dados do Flow';
+}
+
+// % da meta de referência (mínima p/ crítico; realista p/ os demais; desafiadora p/ supernova)
+function referencia(c) {
+  if (c.faixa === 'critico') return c.semMinima
+    ? { nome: '70% da realista', valor: c.metas.realista * 0.7 }
+    : { nome: 'mínima', valor: c.metas.minimo };
+  if (c.faixa === 'supernova') return { nome: 'desafiadora', valor: c.metas.desafiador };
+  return { nome: 'realista', valor: c.metas.realista || c.metas.minimo };
+}
+
+function cartao(c) {
+  const ref = referencia(c);
+  const escala = Math.max(c.projecao, c.metas.desafiador, c.metas.realista, c.metas.minimo, 1) * 1.05;
+  const w = (v) => Math.min(100, (v / escala) * 100).toFixed(1) + '%';
+  const mk = (cls, v) => (v > 0 ? `<div class="mk ${cls}" style="left:${w(v)}" title="${cls === 'min' ? 'Mínima' : cls === 'rea' ? 'Realista' : 'Desafiadora'}: ${brl0(v)}"></div>` : '');
+  const selos = (c.atrasoDias >= 3 ? `<span class="selo" title="Projeção calculada até o último lançamento de receita">receita lançada até ${ddmm(c.ultimoLancamento)}</span>` : '')
+    + (c.inicioDoMes ? '<span class="selo" title="Poucos dias no mês: a projeção ainda oscila muito">início do mês</span>' : '');
+  const nomeProx = c.faixa === 'critico' ? (c.semMinima ? 'a 70% da realista' : 'a mínima') : c.faixa === 'atencao' ? 'a realista' : 'a desafiadora';
+  const acao = c.fechado ? `Fechou o mês com <b>${brl0(c.faturado)}</b>`
+    : c.faltaPorDia ? `Pra chegar ${nomeProx}: <b>${brl0(c.faltaPorDia)}/dia</b> ${c.diasRestantes === 1 ? 'no 1 dia que resta' : `nos ${c.diasRestantes} dias que restam`}`
+    : c.faixa === 'supernova' ? '<b>Acima da meta desafiadora</b>' : '';
+  return `<div class="cli" style="--cor:${COR[c.faixa]}">
+    <div class="top"><span class="nm" title="${esc(c.nome)}">${esc(c.nome)}</span><span class="pct" title="projeção ÷ meta ${ref.nome}">${pct(ref.valor ? c.projecao / ref.valor * 100 : null)}</span></div>
+    ${c.consultor ? `<div class="cons">${esc(c.consultor)}</div>` : ''}
+    <div class="barra"><div class="proj" style="width:${w(c.projecao)}"></div><div class="fat" style="width:${w(c.faturado)}"></div>${mk('min', c.metas.minimo)}${mk('rea', c.metas.realista)}${mk('des', c.metas.desafiador)}</div>
+    <div class="linha"><span>Projeção <b>${brl0(c.projecao)}</b></span><span>meta ${ref.nome} ${brl0(ref.valor)}</span></div>
+    <div class="linha"><span>Faturado <b>${brl0(c.faturado)}</b></span><span>${brl0(c.ritmo)}/dia</span></div>
+    ${acao ? `<div class="acao">${acao}</div>` : ''}
+    ${selos ? `<div>${selos}</div>` : ''}
+  </div>`;
+}
+
+function render(j) {
+  const [y, m] = j.mes.split('-').map(Number);
+  $('tituloMes').textContent = MESES[m - 1] + ' ' + y;
+  const por = {};
+  j.clientes.forEach((c) => { (por[c.faixa] = por[c.faixa] || []).push(c); });
+  const razao = (c) => { const r = referencia(c).valor; return r ? c.projecao / r : 0; };
+  ORDEM.forEach((f) => (por[f] || []).sort((a, b) => (f === 'supernova' || f === 'estrela') ? razao(b) - razao(a) : razao(a) - razao(b)));
+
+  $('resumo').innerHTML = ORDEM.map((f) => {
+    const lista = por[f] || [];
+    return `<div class="card res" style="--cor:${COR[f]}"><span class="ic">${ICONE[f]}</span>
+      <div><div class="n">${lista.length}</div></div>
+      <div><div class="t">${esc(j.faixas[f].nome)}</div><div class="d">${DESC[f]}</div></div></div>`;
+  }).join('');
+
+  $('quadro').innerHTML = ORDEM.map((f) => {
+    const lista = por[f] || [];
+    return `<div class="card col" style="--cor:${COR[f]}"><h2>${ICONE[f]} ${esc(j.faixas[f].nome)} <small>${lista.length} cliente${lista.length === 1 ? '' : 's'}</small></h2>
+      <div class="lista">${lista.length ? lista.map(cartao).join('') : '<div class="vazio">Nenhum cliente aqui</div>'}</div></div>`;
+  }).join('');
+
+  const nomes = (l) => l.length ? l.map((c) => esc(c.nome)).join(' · ') : '—';
+  const semMeta = por.semMeta || [], semLanc = por.semLancamento || [];
+  $('rodape').innerHTML =
+    `<div class="card rf"><span class="tt">Sem meta cadastrada (${semMeta.length})</span>${nomes(semMeta)}</div>`
+    + `<div class="card rf"><span class="tt">Com meta, sem receita lançada no mês (${semLanc.length})</span>${nomes(semLanc)}</div>`;
+
+  $('status').textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    + ' · ' + j.clientes.length + ' clientes no Flow';
+}
+
+carregar();
+setInterval(carregar, 10 * 60 * 1000);
+</script>
+</body>
+</html>

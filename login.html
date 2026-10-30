@@ -68,7 +68,11 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ usuario: document.getElementById('usuario').value, senha: document.getElementById('senha').value })
       });
-      if (r.ok) { location.href = '/'; return; }
+      if (r.ok) {
+        const volta = new URLSearchParams(location.search).get('volta') || '/';
+        location.href = /^\/(?!\/)[\w\-\/]*$/.test(volta) ? volta : '/';   // só caminho interno (ex.: /clientes)
+        return;
+      }
       const j = await r.json().catch(() => ({}));
       erro.textContent = j.erro || 'Não foi possível entrar.';
     } catch (_) {
