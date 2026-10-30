@@ -63,6 +63,12 @@
   body.ocultar-valores .btn-olho .olho-aberto{display:none}
   body.ocultar-valores .btn-olho .olho-fechado{display:inline}
   body.ocultar-valores #metaValor{display:none}
+  /* olho fechado: some também com as quantidades dos 4 KPIs e os números do gráfico de vendas (fica só a forma) */
+  body.ocultar-valores #kpiLeads,body.ocultar-valores #kpiOportunidades,
+  body.ocultar-valores #kpiReunioes,body.ocultar-valores #kpiVendas{position:relative;visibility:hidden}
+  body.ocultar-valores #kpiLeads::after,body.ocultar-valores #kpiOportunidades::after,
+  body.ocultar-valores #kpiReunioes::after,body.ocultar-valores #kpiVendas::after{content:'•••';visibility:visible;position:absolute;left:0;top:0;color:var(--text-3);letter-spacing:.08em}
+  body.ocultar-valores #chartVendas .bar-val,body.ocultar-valores #resumoVendas{display:none}
 
   .mes-filtro-wrap{position:relative}
   .mes-filtro{
@@ -1108,7 +1114,7 @@ function desenharBarras(containerId, valores, destaque) {
     const h = Math.max(barW * 0.85, (m.v / max) * alturaMax);
     const y = baseY - h;
     svg += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="${rx}" fill="url(#${ativo ? 'gBar' : 'gBarMuted'})"/>`;
-    svg += `<text x="${cx}" y="${y - fVal * 0.45}" text-anchor="middle" fill="${ativo ? '#F8F6F1' : '#D8CBA8'}" font-size="${fVal}" font-weight="600" font-family="Fraunces, serif">${m.v}</text>`;
+    svg += `<text class="bar-val" x="${cx}" y="${y - fVal * 0.45}" text-anchor="middle" fill="${ativo ? '#F8F6F1' : '#D8CBA8'}" font-size="${fVal}" font-weight="600" font-family="Fraunces, serif">${m.v}</text>`;
     svg += `<text x="${cx}" y="${baseY + fMes * 1.9}" text-anchor="middle" fill="${ativo ? '#E6D19A' : '#9A8E6E'}" font-size="${fMes}" font-weight="${ativo ? 800 : 600}" letter-spacing="1.5" font-family="Figtree, sans-serif">${MESES_ABREV[m.i].toUpperCase()}</text>`;
   });
 
@@ -1236,8 +1242,8 @@ function renderizar(dados) {
     : (rangeComercial ? agregarMeses(dados, rangeComercial.mIni, rangeComercial.mFim) : dados.porMes[idx]);
 
   // ── Meta de faturamento ──
-  const pct = d.meta > 0 ? Math.min((d.valorVendas / d.meta) * 100, 100) : 0;
-  document.getElementById('progressFill').style.width = pct + '%';
+  const pct = d.meta > 0 ? (d.valorVendas / d.meta) * 100 : 0;       // % real (pode passar de 100%)
+  document.getElementById('progressFill').style.width = Math.min(pct, 100) + '%';   // a barra só enche até o fim
   document.getElementById('metaPct').textContent = Math.round(pct) + '%';
   document.getElementById('metaValor').innerHTML = `${moeda(d.valorVendas)} <small>/ ${moeda(d.meta)}</small>`;
 
