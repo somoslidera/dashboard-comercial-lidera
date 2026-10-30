@@ -986,8 +986,10 @@ function desenharMapa(containerId, clientes) {
 
   const pts = [];
   let totalClientes = 0, totalCidades = 0;
+  const ufs = new Set();
   Object.values(grupos).forEach(g => {
     totalCidades++;
+    if (g.uf) ufs.add(String(g.uf).trim().toUpperCase());
     totalClientes += g.qtd;
     const [x, y] = projetar(g.coords[0], g.coords[1]);
     const rotulo = (g.cidade + (g.uf ? ' · ' + g.uf.toUpperCase() : '') + (g.qtd > 1 ? ' ×' + g.qtd : '')).toUpperCase();
@@ -1060,7 +1062,8 @@ function desenharMapa(containerId, clientes) {
   document.getElementById('resumoClientes').textContent =
     totalClientes > 0
       ? totalClientes + (totalClientes === 1 ? ' cliente' : ' clientes') + ' · ' +
-        totalCidades + (totalCidades === 1 ? ' cidade' : ' cidades')
+        totalCidades + (totalCidades === 1 ? ' cidade' : ' cidades') + ' · ' +
+        ufs.size + (ufs.size === 1 ? ' estado' : ' estados')
       : '';
 }
 
