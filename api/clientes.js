@@ -56,7 +56,42 @@ export function resultadoDoMes(org, ini, fim) {
   return { receitas: rec, despesas, valor, pct: rec > 0 ? valor / rec * 100 : null, temLancamento: ls.length > 0 || contas > 0 };
 }
 
-// classifica UM cliente. org = { id, nome, consultor, metas, diasTrab, catTipos, lanc, contasAbertas, meios, receitaBruta }
+// semana de compras: segunda a domingo. A base da meta é a semana ANTERIOR inteira (seg–dom).
+export function semanas(hoje) {
+  const d = new Date(hoje + 'T12:00:00Z');
+  const seg = new Date(d.getTime() - ((d.getUTCDay() + 6) % 7) * 86400000);
+  const mais = (x, n) => isoDia(new Date(x.getTime() + n * 86400000));
+  return { ini: isoDia(seg), fim: mais(seg, 6), antIni: mais(seg, -7), antFim: mais(seg, -1) };
+}
+
+// CMV LANÇADO do mês = igual ao Flow (cmvLancPeriodo): lançamentos do grupo "CMV" ÷ receitas do mês.
+// META DE COMPRA da semana = regra do comercial: vendido na semana anterior (seg–dom) × CMV alvo.
+//   Fica fixa a semana inteira (muda toda segunda). Comprado = lançamentos "CMV" de segunda até hoje.
+export function comprasDoCliente(org, { mesIni, mesFim, hoje }) {
+  const tipos = org.catTipos || {};
+  const ls = org.lanc || [];
+  const soma = (f) => ls.filter(f).reduce((s, l) => s + num(l.valor), 0);
+  const entre = (l, a, b) => l.data >= a && l.data <= b;
+  const ehCMV = (l) => l.grupo === 'CMV';
+  const ehRec = (l) => tipos[l.grupo] === 'receita';
+
+  const cmvMes = soma((l) => ehCMV(l) && entre(l, mesIni, mesFim));
+  const recMes = soma((l) => ehRec(l) && entre(l, mesIni, mesFim));
+  const alvo = num(org.cmvAlvo) > 0 ? num(org.cmvAlvo) : 30;            // padrão do Flow: 30%
+  const S = semanas(hoje);
+  const vendasBase = soma((l) => ehRec(l) && entre(l, S.antIni, S.antFim));
+  const meta = vendasBase * alvo / 100;
+  const comprado = soma((l) => ehCMV(l) && entre(l, S.ini, hoje < S.fim ? hoje : S.fim));
+  const saldo = meta - comprado;
+  const status = meta <= 0 ? (comprado > 0 ? 'semBase' : 'semDado')
+    : comprado > meta ? 'estourou' : comprado >= meta * 0.85 ? 'limite' : 'dentro';
+  return {
+    alvo, cmvLancado: recMes > 0 && cmvMes > 0 ? cmvMes / recMes * 100 : null, cmvMesRS: cmvMes,
+    vendasBase, meta, comprado, saldo, usoPct: meta > 0 ? comprado / meta * 100 : null, status
+  };
+}
+
+// classifica UM cliente. org ={ id, nome, consultor, metas, diasTrab, catTipos, lanc, contasAbertas, meios, receitaBruta }
 export function analisarCliente(org, { mes, hoje }) {
   const [y, m] = mes.split('-').map(Number);
   const ini = `${mes}-01`, fim = `${mes}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}`;
@@ -83,7 +118,8 @@ export function analisarCliente(org, { mes, hoje }) {
     id: org.id, nome: org.nome || '—', consultor: org.consultor || null,
     faturado, projecao, ritmo, ultimoLancamento: ultimo || null, atrasoDias,
     diasMes, diasDecorridos: decorr, metas, fechado,
-    resultado: resultadoDoMes(org, ini, fim)
+    resultado: resultadoDoMes(org, ini, fim),
+    compras: comprasDoCliente(org, { mesIni: ini, mesFim: fim, hoje })
   };
   if (!temMeta) return { ...base, faixa: 'semMeta' };
   if (!receitas.length) return { ...base, faixa: 'semLancamento' };
@@ -122,11 +158,12 @@ select o.id, o.nome, p.nome as consultor,
   (select coalesce(jsonb_agg(jsonb_build_object('grupo', c->>'grupo', 'valor', c->'valor')), '[]'::jsonb)
      from jsonb_array_elements(case when jsonb_typeof(o.dados->'fin'->'contasPagar') = 'array' then o.dados->'fin'->'contasPagar' else '[]'::jsonb end) c
     where coalesce(c->>'pago', 'false') not in ('true', '1')
-      and c->>'vencimento' >= $3 and c->>'vencimento' <= $4
+      and c->>'vencimento' >= $5 and c->>'vencimento' <= $6
       and not exists (select 1 from jsonb_array_elements(case when jsonb_typeof(o.dados->'lancamentos') = 'array' then o.dados->'lancamentos' else '[]'::jsonb end) l2
                        where l2->>'fromConta' = c->>'id')) as contas_abertas,
   case when jsonb_typeof(o.dados->'fin'->'meios') = 'array' then o.dados->'fin'->'meios' end as meios,
-  o.dados->'fin'->'receitaBruta' as receita_bruta
+  o.dados->'fin'->'receitaBruta' as receita_bruta,
+  o.dados->'cmvAlvo' as cmv_alvo
 from public.organizacoes o
 left join public.perfis p on p.id = o.consultor_id
 where coalesce(o.dados->>'_demo', 'false') not in ('true', '1')
@@ -152,16 +189,20 @@ export default async function handler(req, res) {
 
   let linhas;
   try {
-    linhas = (await abrir().query(SQL, [mes.slice(0, 4), mes, `${mes}-01`, fim])).rows;
+    // lançamentos: o mês escolhido + a semana anterior à atual (base da meta de compra), que pode cair em outro mês
+    const S = semanas(hoje);
+    const jIni = [`${mes}-01`, S.antIni].sort()[0], jFim = [fim, S.fim].sort()[1];
+    linhas = (await abrir().query(SQL, [mes.slice(0, 4), mes, jIni, jFim, `${mes}-01`, fim])).rows;
   } catch (e) {
     return res.status(200).json({ erro: 'flow_indisponivel', detalhe: String(e.message || e) });
   }
 
   const clientes = linhas.map((r) => analisarCliente({
     id: r.id, nome: r.nome, consultor: r.consultor, metas: r.metas, diasTrab: r.dias_trab, catTipos: r.cat_tipos, lanc: r.lanc,
-    contasAbertas: r.contas_abertas, meios: r.meios, receitaBruta: r.receita_bruta
+    contasAbertas: r.contas_abertas, meios: r.meios, receitaBruta: r.receita_bruta, cmvAlvo: r.cmv_alvo
   }, { mes, hoje }));
 
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=600');
-  return res.status(200).json({ mes, hoje, faixas: FAIXAS, clientes, atualizadoEm: new Date().toISOString() });
+  const S = semanas(hoje);
+  return res.status(200).json({ mes, hoje, semana: { ini: S.ini, fim: S.fim, baseIni: S.antIni, baseFim: S.antFim }, faixas: FAIXAS, clientes, atualizadoEm: new Date().toISOString() });
 }

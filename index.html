@@ -339,6 +339,33 @@
   .cl-cli .acao{font-size:clamp(9px,1.15vh,12px);color:var(--text-2)}
   .cl-cli .acao b{color:var(--cor)}
   .cl-selo{display:inline-block;font-size:clamp(7px,.95vh,10px);font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:100px;background:rgba(240,184,96,.12);color:#F0B860;border:1px solid rgba(240,184,96,.3);margin-right:4px}
+  /* clientes: vendas em cima, compras embaixo (TV) */
+  #viewClientes .cl-quadro{flex:1 1 0}
+  .cl-col h2 .dsc{display:block;font-family:'Figtree',sans-serif;font-size:clamp(8px,.95vh,10px);font-weight:600;color:var(--text-3);letter-spacing:.02em;margin-top:2px}
+  .cl-col h2 .tt{display:flex;flex-direction:column}
+  .cl-mini{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:baseline;background:rgba(255,255,255,.025);border:1px solid var(--line);border-left:3px solid var(--cor);border-radius:9px;padding:5px 9px;font-size:clamp(9px,1.15vh,12px);color:var(--text-2)}
+  .cl-mini .nm{font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:clamp(10px,1.3vh,13px)}
+  .cl-mini .pos{color:#8ff0cf;font-weight:700}.cl-mini .neg{color:#f08f8f;font-weight:700}
+  .cl-compras{flex:1 1 0;min-height:0;display:flex;flex-direction:column;padding:clamp(10px,1.3vh,14px) clamp(12px,1.2vw,18px)}
+  .cl-compras h2{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(14px,2vh,20px);display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:clamp(8px,1.1vh,12px)}
+  .cl-compras h2 .tag{font-family:'Figtree',sans-serif;font-size:clamp(8px,1vh,11px);font-weight:800;color:var(--gold-soft);background:rgba(203,167,94,.12);padding:3px 9px;border-radius:100px;letter-spacing:.08em}
+  .cl-compras h2 .exp{font-family:'Figtree',sans-serif;font-size:clamp(9px,1.1vh,12px);font-weight:600;color:var(--text-3)}
+  .cl-compras h2 .chips{margin-left:auto;display:flex;gap:8px;font-family:'Figtree',sans-serif;font-size:clamp(10px,1.25vh,13px);font-weight:700}
+  .cl-chip{padding:3px 10px;border-radius:100px;border:1px solid var(--line-strong);color:var(--text-2)}
+  .cl-chip b{color:var(--cor);font-family:'Fraunces',serif;font-size:1.15em}
+  .cl-cgrid{flex:1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(clamp(240px,15vw,300px),1fr));gap:clamp(6px,.8vh,10px);align-content:start;padding-right:4px}
+  .cl-cgrid::-webkit-scrollbar{width:6px}.cl-cgrid::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:6px}
+  .cl-comp{background:rgba(255,255,255,.025);border:1px solid var(--line);border-left:3px solid var(--cor);border-radius:11px;padding:clamp(7px,1vh,10px) clamp(9px,.9vw,12px);display:flex;flex-direction:column;gap:5px}
+  .cl-comp .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .cl-comp .nm{font-weight:700;font-size:clamp(11px,1.45vh,15px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cl-comp .uso{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(14px,1.9vh,20px);color:var(--cor);white-space:nowrap}
+  .cl-comp .cbar{position:relative;height:7px;border-radius:7px;background:rgba(0,0,0,.35);overflow:hidden}
+  .cl-comp .cbar i{position:absolute;inset:0 auto 0 0;border-radius:7px;background:var(--cor)}
+  .cl-comp .linha{display:flex;justify-content:space-between;gap:8px;font-size:clamp(9px,1.2vh,12px);color:var(--text-2)}
+  .cl-comp .linha b{color:var(--text);font-weight:700}
+  .cl-comp .linha .pos{color:#8ff0cf}.cl-comp .linha .neg{color:#f08f8f}
+  .cl-cfoot{flex:0 0 auto;margin-top:8px;font-size:clamp(9px,1.15vh,12px);color:var(--text-3);line-height:1.5}
+  .cl-cfoot b{color:var(--text-2)}
   .cl-aviso{grid-column:1/-1;display:grid;place-items:center;text-align:center;color:var(--text-2);font-size:clamp(13px,1.8vh,18px);line-height:1.6;padding:0 15%}
 </style>
 </head>
@@ -613,8 +640,8 @@
     </div>
   </header>
 
-  <section class="cl-resumo" id="clResumo"></section>
   <section class="cl-quadro" id="clQuadro"></section>
+  <section class="card cl-compras" id="clCompras"></section>
 
   <footer>
     <span id="clStatus">Carregando…</span>
@@ -2234,7 +2261,7 @@ async function carregarClientes() {
     const msg = j.erro === 'sem_acesso_flow'
       ? 'A conexão com o banco do Flow ainda não foi configurada.<br>Falta a variável <b>FLOW_DATABASE_URL</b> no Vercel.'
       : 'Não consegui ler o Flow agora.<br><small>' + clEsc(j.detalhe || j.erro) + '</small>';
-    document.getElementById('clResumo').innerHTML = '';
+    document.getElementById('clCompras').innerHTML = '';
     document.getElementById('clQuadro').innerHTML = `<div class="card cl-aviso">${msg}</div>`;
     mS('clStatus', 'Sem dados do Flow');
     return;
@@ -2261,11 +2288,11 @@ function clCartao(c, faixa) {
   const cons = c.consultor ? `<div class="cons">${clEsc(c.consultor)}</div>` : '';
   if (faixa === 'fora') {
     const motivo = c.faixa === 'semMeta' ? 'cadastrar meta no Flow' : `sem receita lançada · meta realista ${clBrl(c.metas.realista)}`;
-    return `<div class="cl-cli" style="--cor:${cor}">
-      <div class="top"><span class="nm" title="${clEsc(c.nome)}">${clEsc(c.nome)}</span></div>${cons}
-      <div class="linha"><span>Faturado <b>${clBrl(c.faturado)}</b></span><span>${c.faturado ? clBrl(c.ritmo) + '/dia' : ''}</span></div>
-      ${clResultado(c)}
-      <div class="acao">${motivo}</div></div>`;
+    const r = c.resultado || {};
+    const res = r.temLancamento ? `<span class="${r.valor >= 0 ? 'pos' : 'neg'}" title="resultado do mês${r.pct != null ? ' · ' + clPct(r.pct) : ''}">${clBrl(r.valor)}</span>` : '<span>sem lançamento</span>';
+    return `<div class="cl-mini" style="--cor:${cor}" title="${clEsc(motivo)}">
+      <span class="nm" title="${clEsc(c.nome)}">${clEsc(c.nome)}</span>${res}
+      <span>fat. ${clBrl(c.faturado)}</span><span>resultado</span></div>`;
   }
   const ref = clReferencia(c);
   const escala = Math.max(c.projecao, c.metas.desafiador, c.metas.realista, c.metas.minimo, 1) * 1.05;
@@ -2298,14 +2325,8 @@ function renderClientes(j) {
   const semLanc = (por.semLancamento || []).slice().sort((a, b) => a.nome.localeCompare(b.nome));
   const nome = (f) => (j.faixas[f] && j.faixas[f].nome) || 'Fora da régua';
 
-  document.getElementById('clResumo').innerHTML = [...CL_ORDEM, 'fora'].map((f) => {
-    const n = f === 'fora' ? semMeta.length + semLanc.length : (por[f] || []).length;
-    return `<div class="card cl-res" style="--cor:${CL_COR[f]}"><span class="ic">${CL_ICONE[f]}</span>
-      <div class="n">${n}</div><div><div class="t">${clEsc(nome(f))}</div><div class="d">${CL_DESC[f]}</div></div></div>`;
-  }).join('');
-
   const coluna = (f, conteudo, n) => `<div class="card cl-col" style="--cor:${CL_COR[f]}">
-    <h2>${CL_ICONE[f]} ${clEsc(nome(f))} <small>${n} cliente${n === 1 ? '' : 's'}</small></h2><div class="cl-lista">${conteudo}</div></div>`;
+    <h2>${CL_ICONE[f]} <span class="tt"><span>${clEsc(nome(f))} <small>${n} cliente${n === 1 ? '' : 's'}</small></span><span class="dsc">${CL_DESC[f]}</span></span></h2><div class="cl-lista">${conteudo}</div></div>`;
   const vazio = '<div class="cl-vazio">Nenhum cliente aqui</div>';
   document.getElementById('clQuadro').innerHTML = CL_ORDEM.map((f) => {
     const l = por[f] || [];
@@ -2315,7 +2336,46 @@ function renderClientes(j) {
     + (semLanc.length ? `<div class="cl-sub">Com meta, sem receita no mês (${semLanc.length})</div>` + semLanc.map((c) => clCartao(c, 'fora')).join('') : '')
     || vazio, semMeta.length + semLanc.length);
 
+  renderCompras(j);
   mS('clStatus', 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' · ' + j.clientes.length + ' clientes no Flow');
+}
+
+// ── Compras da semana: meta = vendido na semana anterior × CMV alvo (fixa de segunda a domingo) ──
+const CP_COR = { estourou: 'var(--c-critico)', limite: 'var(--c-atencao)', dentro: 'var(--c-supernova)' };
+const CP_NOME = { estourou: 'passaram da meta', limite: 'perto do limite (≥ 85%)', dentro: 'dentro da meta' };
+function renderCompras(j) {
+  const S = j.semana || {};
+  const com = j.clientes.filter((c) => c.compras && ['estourou', 'limite', 'dentro'].includes(c.compras.status));
+  const ord = { estourou: 0, limite: 1, dentro: 2 };
+  com.sort((a, b) => ord[a.compras.status] - ord[b.compras.status] || (b.compras.usoPct || 0) - (a.compras.usoPct || 0));
+  const semBase = j.clientes.filter((c) => c.compras && c.compras.status === 'semBase');
+  const nada = j.clientes.filter((c) => !c.compras || c.compras.status === 'semDado');
+  const conta = (s) => com.filter((c) => c.compras.status === s).length;
+
+  const card = (c) => {
+    const p = c.compras, cor = CP_COR[p.status];
+    // 1ª semana do mês: a compra da semana já entrou e o mês tem poucos dias de venda → CMV lançado ainda distorcido
+    const inicioMes = j.mes === (j.hoje || '').slice(0, 7) && +(j.hoje || '').slice(8, 10) <= 7;
+    const cmv = p.cmvLancado == null ? '<span>CMV lançado no mês: —</span>'
+      : `<span>CMV lançado (mês) <b class="${p.cmvLancado > p.alvo ? 'neg' : 'pos'}">${clPct(p.cmvLancado)}</b>`
+        + `${inicioMes ? ' <span class="cl-selo" title="Primeira semana do mês: a compra da semana já entrou e ainda há poucos dias de venda">início do mês</span>' : ''}</span>`;
+    return `<div class="cl-comp" style="--cor:${cor}">
+      <div class="top"><span class="nm" title="${clEsc(c.nome)}">${clEsc(c.nome)}</span><span class="uso" title="comprado ÷ meta de compra da semana">${clPct(p.usoPct)}</span></div>
+      <div class="cbar"><i style="width:${Math.min(100, p.usoPct || 0).toFixed(1)}%"></i></div>
+      <div class="linha"><span>Comprou <b>${clBrl(p.comprado)}</b> de <b>${clBrl(p.meta)}</b></span>
+        <span>${p.saldo >= 0 ? `pode comprar <b class="pos">${clBrl(p.saldo)}</b>` : `passou <b class="neg">${clBrl(-p.saldo)}</b>`}</span></div>
+      <div class="linha">${cmv}<span>alvo ${clPct(p.alvo)}</span></div>
+      <div class="linha"><span title="vendas da semana anterior, base da meta">Vendeu na semana passada ${clBrl(p.vendasBase)}</span></div>
+    </div>`;
+  };
+
+  const el = document.getElementById('clCompras');
+  el.innerHTML = `<h2>🛒 Compras da semana <span class="tag">${clDDMM(S.ini)} → ${clDDMM(S.fim)}</span>
+      <span class="exp">meta = vendido de ${clDDMM(S.baseIni)} a ${clDDMM(S.baseFim)} × CMV alvo de cada cliente</span>
+      <span class="chips">${['estourou', 'limite', 'dentro'].map((s) => `<span class="cl-chip" style="--cor:${CP_COR[s]}"><b>${conta(s)}</b> ${CP_NOME[s]}</span>`).join('')}</span></h2>
+    <div class="cl-cgrid">${com.length ? com.map(card).join('') : '<div class="cl-vazio">Nenhum cliente com venda na semana passada</div>'}</div>
+    <div class="cl-cfoot">${semBase.length ? `<b>Comprou sem ter venda lançada na semana passada (sem meta de compra):</b> ${semBase.map((c) => `${clEsc(c.nome)} (${clBrl(c.compras.comprado)})`).join(' · ')}<br>` : ''}`
+      + `${nada.length} cliente(s) sem venda na semana passada e sem compra nesta semana.</div>`;
 }
 
 carregarDados();
