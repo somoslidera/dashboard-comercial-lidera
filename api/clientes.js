@@ -170,6 +170,14 @@ where coalesce(o.dados->>'_demo', 'false') not in ('true', '1')
   and coalesce(o.dados->>'_arquivado', 'false') not in ('true', '1')
   and coalesce(o.dados->>'_grupo', 'false') not in ('true', '1')`;
 
+// ── clientes que estão no Flow mas não entram nesta tela (nem metas de vendas, nem compras da semana) ──
+// Comparação pelo nome sem acento, maiúscula, espaço ou pontuação: "Panifício da XV" = "panificio da xv".
+// Nome exato — "CD" não esconde "CD Centro". Para esconder mais um, é só acrescentar aqui.
+const OCULTOS = ['Bar do Cris', 'CD', 'Panificio da XV', 'Arena', 'O Rustico', 'Restaurante Janeti'];
+const chaveNome = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const OCULTOS_SET = new Set(OCULTOS.map(chaveNome));
+export const oculto = (nome) => OCULTOS_SET.has(chaveNome(nome));
+
 let pool = null;
 function abrir() {
   if (!pool) pool = new pg.Pool({ connectionString: process.env.FLOW_DATABASE_URL, max: 1, ssl: { rejectUnauthorized: false } });
@@ -197,7 +205,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ erro: 'flow_indisponivel', detalhe: String(e.message || e) });
   }
 
-  const clientes = linhas.map((r) => analisarCliente({
+  const clientes = linhas.filter((r) => !oculto(r.nome)).map((r) => analisarCliente({
     id: r.id, nome: r.nome, consultor: r.consultor, metas: r.metas, diasTrab: r.dias_trab, catTipos: r.cat_tipos, lanc: r.lanc,
     contasAbertas: r.contas_abertas, meios: r.meios, receitaBruta: r.receita_bruta, cmvAlvo: r.cmv_alvo
   }, { mes, hoje }));
