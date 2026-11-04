@@ -2378,6 +2378,49 @@ function renderCompras(j) {
       + `${nada.length} cliente(s) sem venda na semana passada e sem compra nesta semana.</div>`;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   AUTO-ATUALIZAÇÃO DO PAINEL — quando sai versão nova (git push), a TV recarrega sozinha.
+   Na recarga automática não mostra a tela "Ativar som": tenta religar o áudio sozinho e,
+   se o navegador não deixar, só mostra um aviso discreto no canto (OK do controle religa).
+   ═══════════════════════════════════════════════════════════ */
+(function () {
+  let auto = null;
+  try { auto = sessionStorage.getItem('autoRecarga'); sessionStorage.removeItem('autoRecarga'); } catch (e) {}
+  if (auto === 'som') {          // só pula a tela se o som já tinha sido ativado antes da recarga
+    somOverlay.classList.add('escondido');
+    let ok = false;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'running') { audioCtx = ctx; somLiberado = true; ok = true; } else ctx.close();
+    } catch (e) {}
+    if (!ok) {
+      const av = document.createElement('div');
+      av.textContent = '🔇 Som pausado após atualização — aperte OK para reativar';
+      av.style.cssText = 'position:fixed;right:14px;bottom:12px;z-index:2900;background:rgba(6,12,26,.85);border:1px solid var(--line-strong);color:var(--text-2);border-radius:100px;padding:6px 14px;font-size:13px';
+      document.body.appendChild(av);
+      const tirar = () => { av.remove(); ['click', 'keydown', 'touchstart'].forEach((ev) => document.removeEventListener(ev, tirar)); };
+      ['click', 'keydown', 'touchstart'].forEach((ev) => document.addEventListener(ev, tirar));
+    }
+  }
+
+  let versao = null;
+  async function checarVersao() {
+    try {
+      const r = await fetch('/api/versao?t=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return;
+      const { v } = await r.json();
+      if (!v) return;
+      if (versao === null) { versao = v; return; }
+      if (v !== versao) {
+        try { sessionStorage.setItem('autoRecarga', somLiberado ? 'som' : '1'); } catch (e) {}
+        location.reload();
+      }
+    } catch (e) {}
+  }
+  checarVersao();
+  setInterval(checarVersao, 5 * 60 * 1000);
+})();
+
 carregarDados();
 atualizarMapa();
 trocarView(viewAtiva);
