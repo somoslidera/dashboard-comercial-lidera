@@ -189,8 +189,14 @@ async function periodoPorDia(res, since, until) {
   dias.forEach((d) => {
     keys.push(`v:count:${d}`, `v:valor:${d}`, `r:${d}`, `o:${d}`, `n:${d}`, `l:${d}`, `d:${d}`);
   });
+  dias.forEach((d) => keys.push(`vg:count:${d}`, `vg:valor:${d}`));   // produto de gerente (no fim, p/ não mexer nos índices)
   const r = keys.length ? ((await pipeline([['MGET', ...keys]]))[0] || []) : [];
-  let vendas = 0, valor = 0, reunioes = 0, oport = 0, noshow = 0, leads = 0, desq = 0;
+  let vendas = 0, valor = 0, reunioes = 0, oport = 0, noshow = 0, leads = 0, desq = 0, vendasGer = 0, valorGer = 0;
+  const G0 = dias.length * 7;
+  for (let i = 0; i < dias.length; i++) {
+    vendasGer += parseInt(r[G0 + i * 2] || 0, 10) || 0;
+    valorGer += parseFloat(r[G0 + i * 2 + 1] || 0) || 0;
+  }
   for (let i = 0; i < dias.length; i++) {
     const b = i * 7;
     vendas += parseInt(r[b] || 0, 10) || 0;
@@ -207,7 +213,8 @@ async function periodoPorDia(res, since, until) {
     noShowPct: (reunioes + noshow) > 0 ? (noshow / (reunioes + noshow)) * 100 : null,
     vendas, valorVendas: valor,
     conversao: reunioes > 0 ? (vendas / reunioes) * 100 : null,
-    meta: Math.round((dias.length / 30) * META_PADRAO) || META_PADRAO
+    meta: Math.round((dias.length / 30) * META_PADRAO) || META_PADRAO,
+    vendasGerente: vendasGer, valorGerente: valorGer
   };
   res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=120');
   return res.status(200).json({ periodo, since, until, dias: dias.length });

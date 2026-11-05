@@ -1355,9 +1355,10 @@ document.getElementById('mesFiltro').addEventListener('change', e => {
 
 // soma os meses [mIni..mFim] num objeto no formato de um mês
 function agregarMeses(dados, mIni, mFim) {
-  const a = { leads: 0, oportunidades: 0, reunioes: 0, noshow: 0, vendas: 0, valorVendas: 0, mql: 0, sql: 0, desqualificados: 0, meta: 0, _n: 0 };
+  const a = { leads: 0, oportunidades: 0, reunioes: 0, noshow: 0, vendas: 0, valorVendas: 0, mql: 0, sql: 0, desqualificados: 0, meta: 0, _n: 0, vendasGerente: 0, valorGerente: 0 };
   for (let i = mIni; i <= mFim; i++) {
     const m = dados.porMes[i]; if (!m) continue;
+    a.vendasGerente += m.vendasGerente || 0; a.valorGerente += m.valorGerente || 0;
     a.leads += m.leads || 0; a.oportunidades += m.oportunidades || 0; a.reunioes += m.reunioes || 0;
     a.noshow += m.noshow || 0; a.vendas += m.vendas || 0; a.valorVendas += m.valorVendas || 0;
     a.mql += m.mql || 0; a.sql += m.sql || 0; a.desqualificados += m.desqualificados || 0;
@@ -1423,13 +1424,14 @@ function renderizar(dados) {
   const d = periodoDiario ? periodoDiario
     : (rangeComercial ? agregarMeses(dados, rangeComercial.mIni, rangeComercial.mFim) : dados.porMes[idx]);
 
-  // ── Meta de faturamento ──
-  const pct = d.meta > 0 ? (d.valorVendas / d.meta) * 100 : 0;       // % real (pode passar de 100%)
+  // ── Meta de faturamento ── (consultoria + produto de gerente)
+  const fatMeta = (d.valorVendas || 0) + (d.valorGerente || 0);
+  const pct = d.meta > 0 ? (fatMeta / d.meta) * 100 : 0;             // % real (pode passar de 100%)
   document.getElementById('progressFill').style.width = Math.min(pct, 100) + '%';   // a barra só enche até o fim
   document.getElementById('metaPct').textContent = Math.round(pct) + '%';
-  document.getElementById('metaValor').innerHTML = `${moeda(d.valorVendas)} <small>/ ${moeda(d.meta)}</small>`;
+  document.getElementById('metaValor').innerHTML = `${moeda(fatMeta)} <small>/ ${moeda(d.meta)}</small>`;
 
-  const bateu = d.meta > 0 && d.valorVendas >= d.meta;
+  const bateu = d.meta > 0 && fatMeta >= d.meta;
   document.getElementById('progressTrack').classList.toggle('complete', bateu);
   document.getElementById('metaStatus').classList.toggle('visible', bateu);
 
