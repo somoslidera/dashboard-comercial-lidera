@@ -9,8 +9,8 @@ const F_VENDAS               = 'b765f6c0-49da-4ad1-9c78-447606006901'; // Vendas
 const F_PREVENDAS            = 'e72026a9-756b-4db0-ad9f-2aacc2a5a113'; // Pré Vendas
 const F_RASTREIO_AGENDAMENTO = 'eba4042d-db40-436b-8efb-3c5d6602d756'; // [SISTEMA] Rastreio - Agendamentos  (CONFIRMAR)
 const F_RASTREIO_NOSHOW      = 'a8bda2e1-e970-41bc-ab62-3158ead4ffc2'; // [SISTEMA] Rastreio - No-Show        (CONFIRMAR)
-const F_GERENTES             = '';                                     // Gerentes (produto de entrada) — PREENCHER com o id
-const FUNIS_CONHECIDOS = [F_VENDAS, F_PREVENDAS, F_RASTREIO_AGENDAMENTO, F_RASTREIO_NOSHOW, F_GERENTES].filter(Boolean);
+const F_GERENTES             = '21960f23-f48a-47ed-ab23-8d32a87e19d6'; // Gerentes (produto de entrada, separado da consultoria)
+// (outros funis da conta, ignorados: Vagas 04cbd9b1-a2fa-4935-8a4a-00a3fcc3c8ea, Instagram 582b63f8-dd64-44c3-8bd1-3132f31c58f0)
 
 // Onde cada produto guarda as vendas no Redis (consultoria = chaves históricas; gerente = vg:*)
 const PROD = {
@@ -220,17 +220,6 @@ export default async function handler(req, res) {
   const evento = body.event;
   const deal = (body.data && body.data.deal) || {};
   const lead = (body.data && body.data.lead) || {};
-
-  // anota funis que o painel ainda não conhece (p/ descobrir o id de um funil novo, ex.: Gerentes)
-  if (deal.funnel_id && !FUNIS_CONHECIDOS.includes(deal.funnel_id)) {
-    try {
-      const f = (body.data && body.data.funnel) || deal.funnel || {};
-      await redis(['HSET', 'funis:vistos', deal.funnel_id, JSON.stringify({
-        evento, em: new Date().toISOString(), negociacao: deal.title || null,
-        funil: f.name || deal.funnel_name || null, etapa: deal.funnel_stage_id || null, status: deal.status || null
-      })]);
-    } catch (e) { /* não atrapalha o resto */ }
-  }
 
   try {
     if (evento === 'deal.won') {
