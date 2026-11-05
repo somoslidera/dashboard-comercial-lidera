@@ -1170,8 +1170,12 @@ const fmtCusto = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: '
 function custoBRL(v) { return fmtCusto.format(v || 0); }
 let investidoComercial = null; // investido do Facebook no período atual do comercial
 
-/* ─── Gráfico de barras — vendas por mês (só os meses com venda) ─── */
-function desenharBarras(containerId, valores, destaque) {
+/* ─── Gráfico de barras — vendas por mês (só os meses com venda) ───
+   valoresB (opcional) = vendas do produto de GERENTE → 2 colunas por mês (consultoria dourada, gerente azul).
+   A coluna de gerente aparece a partir do 1º mês em que houve venda de gerente. */
+function desenharBarras(containerId, valores, destaque, valoresB) {
+  const temB = Array.isArray(valoresB) && valoresB.some((v) => v);
+  if (temB) return desenharBarrasDuplas(containerId, valores, destaque, valoresB);
   const el = document.getElementById(containerId);
   // mede o tamanho REAL do container → viewBox 1:1, sem distorção
   const W = Math.max(320, el.clientWidth || 600);
@@ -1215,6 +1219,84 @@ function desenharBarras(containerId, valores, destaque) {
     const y = baseY - h;
     svg += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="${rx}" fill="url(#${ativo ? 'gBar' : 'gBarMuted'})"/>`;
     svg += `<text class="bar-val" x="${cx}" y="${y - fVal * 0.45}" text-anchor="middle" fill="${ativo ? '#F8F6F1' : '#D8CBA8'}" font-size="${fVal}" font-weight="600" font-family="Fraunces, serif">${m.v}</text>`;
+    svg += `<text x="${cx}" y="${baseY + fMes * 1.9}" text-anchor="middle" fill="${ativo ? '#E6D19A' : '#9A8E6E'}" font-size="${fMes}" font-weight="${ativo ? 800 : 600}" letter-spacing="1.5" font-family="Figtree, sans-serif">${MESES_ABREV[m.i].toUpperCase()}</text>`;
+  });
+
+  svg += `</svg>`;
+  el.innerHTML = svg;
+}
+
+function desenharBarrasDuplas(containerId, valores, destaque, valoresB) {
+  const el = document.getElementById(containerId);
+  const W = Math.max(320, el.clientWidth || 600);
+  const H = Math.max(220, el.clientHeight || 400);
+  const padL = W * 0.05, padR = W * 0.05, padT = H * 0.22, padB = H * 0.13;
+  const areaW = W - padL - padR;
+  const alturaMax = H - padT - padB;
+  const baseY = H - padB;
+
+  const primeiroB = valoresB.findIndex((v) => v);
+  const meses = [];
+  for (let i = 0; i < 12; i++) {
+    const a = valores[i], b = valoresB[i];
+    const comB = primeiroB >= 0 && i >= primeiroB && i <= Math.max(new Date().getMonth(), primeiroB);
+    if (a != null || b || comB) meses.push({ i, a: a || 0, b: comB ? (b || 0) : null });
+  }
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<defs>
+    <linearGradient id="gBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EBD7A4"/><stop offset="100%" stop-color="#B78F42"/></linearGradient>
+    <linearGradient id="gBarMuted" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8B7B54"/><stop offset="100%" stop-color="#544A2C"/></linearGradient>
+    <linearGradient id="gBarG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#A9CDF5"/><stop offset="100%" stop-color="#4C7FC0"/></linearGradient>
+    <linearGradient id="gBarGMuted" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5E7393"/><stop offset="100%" stop-color="#34445E"/></linearGradient>
+  </defs>`;
+  for (let g = 1; g <= 3; g++) { const gy = baseY - alturaMax * g / 4; svg += `<line x1="${padL}" y1="${gy}" x2="${W - padR}" y2="${gy}" stroke="rgba(157,176,206,0.07)" stroke-width="1"/>`; }
+  svg += `<line x1="${padL}" y1="${baseY}" x2="${W - padR}" y2="${baseY}" stroke="rgba(157,176,206,0.16)" stroke-width="1"/>`;
+
+  // legenda
+  const fLeg = Math.max(12, Math.min(W * 0.024, 16));
+  const legY = fLeg * 1.2;
+  const itens = [['gBar', 'Consultoria'], ['gBarG', 'Gerente']];
+  let lx = W - padR;
+  const larg = itens.map(([, t]) => t.length * fLeg * 0.58 + fLeg * 1.6);
+  lx -= larg.reduce((s, x) => s + x, 0);
+  itens.forEach(([g, t], k) => {
+    svg += `<rect x="${lx}" y="${legY - fLeg * 0.75}" width="${fLeg * 0.8}" height="${fLeg * 0.8}" rx="${fLeg * 0.4}" fill="url(#${g})"/>`;
+    svg += `<text x="${lx + fLeg * 1.1}" y="${legY}" fill="#9DB0CE" font-size="${fLeg}" font-weight="600" font-family="Figtree, sans-serif">${t}</text>`;
+    lx += larg[k];
+  });
+
+  if (!meses.length) { svg += `</svg>`; el.innerHTML = svg; return; }
+
+  const N = meses.length;
+  const slotW = Math.min(areaW / N, 200);
+  const startX = padL + (areaW - slotW * N) / 2;
+  const barW = Math.min(slotW * 0.33, 50);
+  const gap = barW * 0.16;
+  const rx = barW / 2;
+  const max = Math.max(1, ...meses.map((m) => Math.max(m.a, m.b || 0)));
+  const fMes = Math.max(12, Math.min(W * 0.027, 17));
+  const fVal = Math.max(16, Math.min(W * 0.05, 32));
+
+  const barra = (cx, v, grad, ativo, corTxt) => {
+    const x = cx - barW / 2;
+    const h = v > 0 ? Math.max(barW * 0.85, (v / max) * alturaMax) : 4;
+    const y = baseY - h;
+    let s = `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="${v > 0 ? rx : 2}" fill="url(#${ativo ? grad : grad + 'Muted'})"/>`;
+    s += `<text class="bar-val" x="${cx}" y="${y - fVal * 0.45}" text-anchor="middle" fill="${corTxt}" font-size="${fVal}" font-weight="600" font-family="Fraunces, serif">${v}</text>`;
+    return s;
+  };
+
+  meses.forEach((m, j) => {
+    const cx = startX + slotW * j + slotW / 2;
+    const ativo = destaque == null || destaque === m.i;
+    if (m.b == null) {
+      svg += barra(cx, m.a, 'gBar', ativo, ativo ? '#F8F6F1' : '#D8CBA8');
+    } else {
+      const d = (barW + gap) / 2;
+      svg += barra(cx - d, m.a, 'gBar', ativo, ativo ? '#F8F6F1' : '#D8CBA8');
+      svg += barra(cx + d, m.b, 'gBarG', ativo, ativo ? '#EAF2FC' : '#9FB4D2');
+    }
     svg += `<text x="${cx}" y="${baseY + fMes * 1.9}" text-anchor="middle" fill="${ativo ? '#E6D19A' : '#9A8E6E'}" font-size="${fMes}" font-weight="${ativo ? 800 : 600}" letter-spacing="1.5" font-family="Figtree, sans-serif">${MESES_ABREV[m.i].toUpperCase()}</text>`;
   });
 
@@ -1388,15 +1470,22 @@ function renderizar(dados) {
   document.getElementById('custoVenda').innerHTML = '<span class="cl">CAC</span>' + custoTxt(d.vendas);
 
   // ── Gráfico de vendas por mês ──
-  desenharBarras('chartVendas', dados.series.vendas, idx);
+  const serieGer = dados.series.vendasGerente || [];
+  desenharBarras('chartVendas', dados.series.vendas, idx, serieGer);
 
-  // ── Resumo do ano ──
+  // ── Resumo do ano ── (consultoria; gerente aparece à parte quando houver)
   const totalVendasAno = dados.series.vendas.reduce((s, v) => s + (v || 0), 0);
   const totalFatAno = Object.values(dados.porMes).reduce((s, m) => s + (m.valorVendas || 0), 0);
-  document.getElementById('resumoVendas').textContent =
-    totalVendasAno > 0
-      ? (valoresOcultos ? totalVendasAno + ' no ano' : totalVendasAno + ' no ano · ' + moeda(totalFatAno))
-      : '';
+  const totalGerAno = serieGer.reduce((s, v) => s + (v || 0), 0);
+  const totalFatGerAno = (dados.series.valorGerente || []).reduce((s, v) => s + (v || 0), 0);
+  let resumo = totalVendasAno > 0
+    ? (valoresOcultos ? totalVendasAno + ' no ano' : totalVendasAno + ' no ano · ' + moeda(totalFatAno))
+    : '';
+  if (totalGerAno > 0) {
+    if (resumo) resumo = 'Consultoria: ' + resumo;
+    resumo += (resumo ? '  |  ' : '') + 'Gerente: ' + totalGerAno + (valoresOcultos ? '' : ' · ' + moeda(totalFatGerAno));
+  }
+  document.getElementById('resumoVendas').textContent = resumo;
 
   const agora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   document.getElementById('ultimaAtualizacao').textContent = 'Última atualização: ' + agora;
@@ -1426,7 +1515,9 @@ async function carregarDados() {
     if (viewAtiva === 'marketing') atualizarFunilMkt();
     if (dados && dados.porMes && Object.keys(dados.porMes).length) {
       // detecta nova venda no MÊS VIGENTE → celebração (confete + sino)
-      const vendasMesAgora = dados.series.vendas[new Date().getMonth()] || 0;
+      // (soma consultoria + gerente: venda de qualquer um dos dois produtos toca o sino)
+      const vendasMesAgora = (dados.series.vendas[new Date().getMonth()] || 0)
+        + ((dados.series.vendasGerente || [])[new Date().getMonth()] || 0);
       if (vendasMesAnterior !== null && vendasMesAgora > vendasMesAnterior) {
         dispararCelebracao();
       }

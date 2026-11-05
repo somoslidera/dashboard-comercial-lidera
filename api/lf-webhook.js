@@ -9,6 +9,14 @@ const F_VENDAS               = 'b765f6c0-49da-4ad1-9c78-447606006901'; // Vendas
 const F_PREVENDAS            = 'e72026a9-756b-4db0-ad9f-2aacc2a5a113'; // Pré Vendas
 const F_RASTREIO_AGENDAMENTO = 'eba4042d-db40-436b-8efb-3c5d6602d756'; // [SISTEMA] Rastreio - Agendamentos  (CONFIRMAR)
 const F_RASTREIO_NOSHOW      = 'a8bda2e1-e970-41bc-ab62-3158ead4ffc2'; // [SISTEMA] Rastreio - No-Show        (CONFIRMAR)
+const F_GERENTES             = '';                                     // Gerentes (produto de entrada) — PREENCHER com o id
+const FUNIS_CONHECIDOS = [F_VENDAS, F_PREVENDAS, F_RASTREIO_AGENDAMENTO, F_RASTREIO_NOSHOW, F_GERENTES].filter(Boolean);
+
+// Onde cada produto guarda as vendas no Redis (consultoria = chaves históricas; gerente = vg:*)
+const PROD = {
+  consultoria: { cnt: 'v:count',  val: 'v:valor',  vm: 'vm',  hash: 'fxs:v',  proc: 'venda' },
+  gerente:     { cnt: 'vg:count', val: 'vg:valor', vm: 'vgm', hash: 'vg:ids', proc: 'vendag' }
+};
 
 // Etapas de encerramento do Pré Vendas que contam como DESQUALIFICAÇÃO (saem do MQL)
 const S_DESQUALIFICADO = '0ca30456-0b96-4452-a014-3a71db256270'; // LEAD DESQUALIFICADO (status "abandoned")
@@ -127,10 +135,10 @@ async function primeiraVez(mes, chave) {
 
 // ESTORNO: a venda foi ganha (e contada) e depois o cliente desistiu.
 // Desconta do mês em que ela foi contada. Idempotente: só age se a venda ainda constar como contada.
-async function estornarVenda(deal) {
+async function estornarVenda(deal, P = PROD.consultoria) {
   if (!deal || !deal.id) return;
   let mes = null, dia = null, valor = 0;
-  const info = await redis(['GET', `vm:${deal.id}`]);
+  const info = await redis(['GET', `${P.vm}:${deal.id}`]);
   if (info) {
     try { const x = JSON.parse(info); mes = x.mes; dia = x.dia; valor = parseFloat(x.valor) || 0; } catch (e) { /* ignora */ }
   }
@@ -140,20 +148,20 @@ async function estornarVenda(deal) {
     for (let k = 0; k < 3 && !mes; k++) {
       const d = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() - k, 1));
       const m = d.toISOString().slice(0, 7);
-      const v = await redis(['HGET', `fxs:v:${m}`, deal.id]);
+      const v = await redis(['HGET', `${P.hash}:${m}`, deal.id]);
       if (v != null) { mes = m; valor = parseFloat(v) || 0; }
     }
   }
   if (!mes) return;                                                   // nunca foi contada → nada a estornar
-  if ((await redis(['SREM', `proc:${mes}`, `venda:${deal.id}`])) !== 1) return;  // já estornada
-  await redis(['DECR', `v:count:${mes}`]);
-  await redis(['INCRBYFLOAT', `v:valor:${mes}`, -valor]);
+  if ((await redis(['SREM', `proc:${mes}`, `${P.proc}:${deal.id}`])) !== 1) return;  // já estornada
+  await redis(['DECR', `${P.cnt}:${mes}`]);
+  await redis(['INCRBYFLOAT', `${P.val}:${mes}`, -valor]);
   if (dia) {
-    await redis(['DECR', `v:count:${dia}`]);
-    await redis(['INCRBYFLOAT', `v:valor:${dia}`, -valor]);
+    await redis(['DECR', `${P.cnt}:${dia}`]);
+    await redis(['INCRBYFLOAT', `${P.val}:${dia}`, -valor]);
   }
-  await redis(['HDEL', `fxs:v:${mes}`, deal.id]);
-  await redis(['DEL', `vm:${deal.id}`]);
+  await redis(['HDEL', `${P.hash}:${mes}`, deal.id]);
+  await redis(['DEL', `${P.vm}:${deal.id}`]);
 }
 
 // CONFERÊNCIA DE VENDAS: reabrir a negociação no LeadForge NÃO dispara webhook.
@@ -169,8 +177,9 @@ async function conferirVendas() {
   const meses = [0, 1]
     .map((k) => new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() - k, 1)).toISOString().slice(0, 7))
     .filter((m) => m >= RECON_INICIO);
+  for (const P of [PROD.consultoria, PROD.gerente])
   for (const mes of meses) {
-    const h = await redis(['HGETALL', `fxs:v:${mes}`]) || [];
+    const h = await redis(['HGETALL', `${P.hash}:${mes}`]) || [];
     const ids = Array.isArray(h) ? h.filter((_, i) => i % 2 === 0) : Object.keys(h);
     await Promise.all(ids.map(async (id) => {
       const lid = await redis(['GET', `dl:${id}`]);
@@ -180,7 +189,7 @@ async function conferirVendas() {
         if (!r.ok) return;
         const j = await r.json();
         const d = ((j && j.deals) || []).find((x) => x.id === id);
-        if (d && d.status && d.status !== 'won') await estornarVenda({ id });   // reaberta/perdida
+        if (d && d.status && d.status !== 'won') await estornarVenda({ id }, P);   // reaberta/perdida
       } catch (e) { /* na dúvida, não mexe */ }
     }));
   }
@@ -212,6 +221,17 @@ export default async function handler(req, res) {
   const deal = (body.data && body.data.deal) || {};
   const lead = (body.data && body.data.lead) || {};
 
+  // anota funis que o painel ainda não conhece (p/ descobrir o id de um funil novo, ex.: Gerentes)
+  if (deal.funnel_id && !FUNIS_CONHECIDOS.includes(deal.funnel_id)) {
+    try {
+      const f = (body.data && body.data.funnel) || deal.funnel || {};
+      await redis(['HSET', 'funis:vistos', deal.funnel_id, JSON.stringify({
+        evento, em: new Date().toISOString(), negociacao: deal.title || null,
+        funil: f.name || deal.funnel_name || null, etapa: deal.funnel_stage_id || null, status: deal.status || null
+      })]);
+    } catch (e) { /* não atrapalha o resto */ }
+  }
+
   try {
     if (evento === 'deal.won') {
       const iso = deal.closed_at || deal.updated_at;
@@ -229,6 +249,19 @@ export default async function handler(req, res) {
             await marcarFaixaDeal(deal);
             await marcarAnuncioDeal(deal, lead);
             await redis(['HSET', `fxs:v:${mes}`, deal.id, valor]);
+          }
+        }
+      } else if (F_GERENTES && deal.funnel_id === F_GERENTES) { // VENDA DO PRODUTO DE GERENTE (separada da consultoria)
+        if (await primeiraVez(mes, `vendag:${deal.id}`)) {
+          const valor = parseFloat(deal.value || '0') || 0;
+          await redis(['INCR', `vg:count:${mes}`]);
+          await redis(['INCRBYFLOAT', `vg:valor:${mes}`, valor]);
+          await redis(['INCR', `vg:count:${dia}`]);
+          await redis(['INCRBYFLOAT', `vg:valor:${dia}`, valor]);
+          if (deal.id) {
+            await redis(['SET', `vgm:${deal.id}`, JSON.stringify({ mes, dia, valor })]);
+            if (deal.lead_id) await redis(['SET', `dl:${deal.id}`, deal.lead_id]);   // p/ a conferência de reabertura
+            await redis(['HSET', `vg:ids:${mes}`, deal.id, valor]);
           }
         }
       } else if (deal.funnel_id === F_PREVENDAS) {              // REUNIÃO REALIZADA
@@ -278,6 +311,9 @@ export default async function handler(req, res) {
                deal.funnel_id === F_VENDAS && (deal.status === 'lost' || deal.status === 'abandoned')) {
       // CLIENTE DESISTIU: venda que já tinha sido contada foi encerrada como perdida → estorna
       await estornarVenda(deal);
+    } else if ((evento === 'deal.closed' || evento === 'deal.lost') && F_GERENTES &&
+               deal.funnel_id === F_GERENTES && (deal.status === 'lost' || deal.status === 'abandoned')) {
+      await estornarVenda(deal, PROD.gerente);                  // gerente desistiu
     } else if (evento === 'deal.closed') {
       // DESQUALIFICAÇÃO no Pré Vendas → tira do MQL (MQL = leads − desqualificados).
       // deal.closed dispara em qualquer encerramento e traz a etapa; só contam LEAD DESQUALIFICADO e PERDA SDR.

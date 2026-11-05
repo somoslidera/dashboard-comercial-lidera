@@ -244,12 +244,22 @@ export default async function handler(req, res) {
     const mes = `${ano}-${String(m).padStart(2, '0')}`;
     keys.push(`v:count:${mes}`, `v:valor:${mes}`, `r:${mes}`, `o:${mes}`, `n:${mes}`, `l:${mes}`, `d:${mes}`);
   }
+  // vendas do produto de GERENTE (separadas da consultoria) — no fim da lista, p/ não mexer nos índices acima
+  for (let m = 1; m <= 12; m++) {
+    const mes = `${ano}-${String(m).padStart(2, '0')}`;
+    keys.push(`vg:count:${mes}`, `vg:valor:${mes}`);
+  }
   const r = (await pipeline([['MGET', ...keys]]))[0] || [];
+  const G0 = 12 * 7;   // início das chaves de gerente
 
   const CAMPOS = 7; // v:count, v:valor, r, o, n, l, d
   const porMes = {};
-  const seriesVendas = [];
+  const seriesVendas = [], seriesGerente = [], seriesGerenteValor = [];
   for (let m = 0; m < 12; m++) {
+    const vGer = parseInt(r[G0 + m * 2] || 0, 10) || 0;
+    const valGer = parseFloat(r[G0 + m * 2 + 1] || 0) || 0;
+    seriesGerente.push(vGer || null);
+    seriesGerenteValor.push(valGer || null);
     const b = m * CAMPOS;
     const vendas   = parseInt(r[b] || 0, 10) || 0;
     const valor    = parseFloat(r[b + 1] || 0) || 0;
@@ -264,7 +274,7 @@ export default async function handler(req, res) {
 
     seriesVendas.push(vendas || null);
 
-    if (vendas || valor || reunioes || oport || noshow || leads) {
+    if (vendas || valor || reunioes || oport || noshow || leads || vGer) {
       porMes[m] = {
         leads,
         desqualificados: desq,
@@ -277,7 +287,9 @@ export default async function handler(req, res) {
         vendas,
         valorVendas: valor,
         conversao: reunioes > 0 ? (vendas / reunioes) * 100 : null,
-        meta: META_PADRAO
+        meta: META_PADRAO,
+        vendasGerente: vGer,
+        valorGerente: valGer
       };
     }
   }
@@ -290,5 +302,5 @@ export default async function handler(req, res) {
   }
 
   res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=120');
-  return res.status(200).json({ porMes, idxAuto, series: { vendas: seriesVendas }, rastreioDiarioInicio: RASTREIO_DIARIO_INICIO });
+  return res.status(200).json({ porMes, idxAuto, series: { vendas: seriesVendas, vendasGerente: seriesGerente, valorGerente: seriesGerenteValor }, rastreioDiarioInicio: RASTREIO_DIARIO_INICIO });
 }
