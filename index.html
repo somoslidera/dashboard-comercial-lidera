@@ -2678,7 +2678,24 @@ function renderIfood() {
   mS('ifFonte', 'Fonte: iFood' + (ifRecebido && ifRecebido.origem ? ' · enviado ' + (ifRecebido.origem === 'toqan' ? 'pelo Toqan' : 'pelo painel') : ''));
 
   if (P.empty || !P.network) { vazio('Sem dados do iFood para este período.'); return; }
-  const N = P.network, C = P.compare || {};
+  const N = P.network;
+  let C = P.compare || {};
+  // "Ontem": compara com o MESMO dia da semana passada (ontem − 7), achado nas séries diárias dos outros períodos
+  if (ontem && P.days && P.days.length === 1) {
+    const ref = new Date(P.days[0] + 'T12:00:00'); ref.setDate(ref.getDate() - 7);
+    const alvo = ref.toISOString().slice(0, 10);
+    let base = null;
+    for (const k of Object.keys(d.periods)) {
+      const q = d.periods[k], i = (q.days || []).indexOf(alvo), nw = q.network || {};
+      if (k !== 'yesterday' && i >= 0 && nw.daily_gmv && nw.daily_gmv[i] != null) { base = { gmv: +nw.daily_gmv[i], orders: nw.daily_orders ? +nw.daily_orders[i] : null }; break; }
+    }
+    if (base && base.gmv > 0) {
+      const v = (a, b) => (a == null || !b) ? null : (a / b - 1) * 100;
+      const tkB = base.orders ? base.gmv / base.orders : null;
+      const semana = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'][ref.getDay()];
+      C = { label: `vs ${semana} passad${ref.getDay() % 6 === 0 ? 'o' : 'a'} (${ifDia(alvo)}: ${ifBrl(base.gmv)})`, gmv: v(N.gmv, base.gmv), orders: v(N.orders, base.orders), ticket: v(N.ticket, tkB) };
+    }
+  }
   const cmp = C.label ? `<span>${clEsc(C.label)}</span>` : '';
   // cancelamento segue o filtro (em "Ontem" é só o dia de ontem, não os 7 dias)
   const cancPct = N.cancel_pct;
