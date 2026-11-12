@@ -2680,15 +2680,16 @@ function renderIfood() {
   if (P.empty || !P.network) { vazio('Sem dados do iFood para este período.'); return; }
   const N = P.network, C = P.compare || {};
   const cmp = C.label ? `<span>${clEsc(C.label)}</span>` : '';
-  const cancPct = ontem && N.cancel_pct_7d != null ? N.cancel_pct_7d : N.cancel_pct;
-  const cancQtd = ontem && N.cancel_7d != null ? N.cancel_7d : N.cancel;
+  // cancelamento segue o filtro (em "Ontem" é só o dia de ontem, não os 7 dias)
+  const cancPct = N.cancel_pct;
+  const cancQtd = N.cancel;
   const ativas = (P.stores || []).filter((s) => (s.orders || 0) > 0).length;
 
   document.getElementById('ifKpis').innerHTML = [
     ['💰', 'Faturamento da rede', ifBrl(N.gmv), `${ifVar(C.gmv)}${cmp}`, true],
     ['🧾', 'Pedidos', ifNum(N.orders), `${ifVar(C.orders)}<span>${ativas} de ${(P.stores || []).length} lojas venderam</span>`],
     ['🎟️', 'Ticket médio', ifBrl2(N.ticket), `${ifVar(C.ticket)}${ontem && N.ticket_7d != null ? `<span>7 dias: ${ifBrl2(N.ticket_7d)}</span>` : ''}`],
-    ['✖️', 'Cancelamento', `<span class="${ifCorCanc(cancPct)}">${ifPct(cancPct)}</span>`, `<span>${ifNum(cancQtd)} pedidos cancelados${ontem ? ' · últimos 7 dias' : ''}</span>`],
+    ['✖️', 'Cancelamento', `<span class="${ifCorCanc(cancPct)}">${ifPct(cancPct)}</span>`, `<span>${ifNum(cancQtd)} ${cancQtd === 1 ? 'pedido cancelado' : 'pedidos cancelados'}</span>`],
     ['⭐', 'Avaliação média', `<span class="${ifCorNota(N.rating)}">${ifNota(N.rating)}</span>`, `<span>${ifNum(N.reviews || 0)} avaliações no período</span>`]
   ].map(([ic, t, v, s, dest]) => `<div class="card if-kpi${dest ? ' dest' : ''}"><div class="t"><span>${ic}</span>${t}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
 
@@ -2696,10 +2697,9 @@ function renderIfood() {
   const lojas = (P.stores || []).slice().sort((a, b) => (b.gmv || 0) - (a.gmv || 0));
   const maxG = Math.max(1, ...lojas.map((s) => s.gmv || 0));
   mS('ifLojasTag', lojas.length + ' LOJAS');
-  mS('ifThCanc', ontem ? 'Cancel. 7d' : 'Cancel.');
+  mS('ifThCanc', 'Cancel.');
   document.getElementById('ifLojas').innerHTML = lojas.map((s, i) => {
-    const canc = s.status_cancel_pct != null ? s.status_cancel_pct : s.cancel_pct;
-    const cancN = ontem && s.cancel_7d != null ? s.cancel_7d : s.cancel;   // "Ontem" mostra % de 7 dias → quantidade de 7 dias também
+    const canc = s.cancel_pct, cancN = s.cancel;   // do período escolhido no filtro
     return `<div class="if-row${(s.gmv || 0) <= 0 ? ' zero' : ''}">
       <div class="pos">${i + 1}</div>
       <div class="nm"><b title="${clEsc(s.name)}">${clEsc(s.name)}</b><small>${clEsc(s.city || '')}</small></div>
