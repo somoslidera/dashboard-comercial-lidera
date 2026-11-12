@@ -416,6 +416,18 @@
   .if-mot .l span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-2)}
   .if-mot .l b{font-family:'Fraunces',serif;font-weight:600}
   .if-mot i{display:block;height:6px;border-radius:6px;background:var(--if-bad);opacity:.8}
+  .if-loja-sel{max-width:clamp(160px,17vw,300px);text-overflow:ellipsis}
+  .if-thead[hidden]{display:none}
+  .if-dthead,.if-drow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr) .8fr .9fr;gap:clamp(6px,.7vw,12px);align-items:center;padding:0 clamp(6px,.6vw,10px)}
+  .if-dthead{color:var(--text-3);font-size:clamp(8px,1vh,11px);font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  .if-dthead div:nth-child(n+3){text-align:right}
+  .if-drow{flex:1 0 auto;min-height:clamp(22px,2.9vh,40px);border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;font-size:clamp(10px,1.35vh,14px)}
+  .if-drow.zero{opacity:.45}
+  .if-drow b{font-weight:700;text-transform:capitalize;margin-right:4px}
+  .if-drow .fat{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .if-drow .fat b{font-family:'Fraunces',serif;font-weight:600;font-size:1.08em}
+  .if-drow .fat i{display:block;height:4px;border-radius:4px;background:linear-gradient(90deg,var(--if-red),var(--if-red-soft));min-width:2px}
+  .if-drow .n{text-align:right;color:var(--text-2);font-weight:600}
   .if-vazio{flex:1;display:grid;place-items:center;text-align:center;color:var(--text-2);font-size:clamp(13px,1.8vh,18px);line-height:1.6;padding:0 12%}
   .if-velho{color:var(--if-bad)}
 </style>
@@ -722,6 +734,9 @@
       <div class="mes-filtro-wrap">
         <select class="mes-filtro" id="ifPeriodo" aria-label="Período"></select>
       </div>
+      <div class="mes-filtro-wrap">
+        <select class="mes-filtro if-loja-sel" id="ifLoja" aria-label="Loja"><option value="">Todas as lojas</option></select>
+      </div>
       <button type="button" class="btn-olho" id="ifEnviar" title="Enviar arquivo do iFood (data.json)" aria-label="Enviar arquivo do iFood">
         <svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>
       </button>
@@ -733,13 +748,13 @@
 
   <section class="if-corpo">
     <div class="card mkt-panel">
-      <h2>🏪 Lojas <span class="tag" id="ifLojasTag">—</span></h2>
-      <div class="if-thead"><div>#</div><div>Loja</div><div>Faturamento</div><div>Pedidos</div><div>Ticket</div><div id="ifThCanc">Cancel.</div><div>Nota</div><div>Tendência</div></div>
+      <h2><span id="ifLojasCab">🏪 Lojas</span> <span class="tag" id="ifLojasTag">—</span></h2>
+      <div class="if-thead" id="ifThead"><div>#</div><div>Loja</div><div>Faturamento</div><div>Pedidos</div><div>Ticket</div><div id="ifThCanc">Cancel.</div><div>Nota</div><div>Tendência</div></div>
       <div class="if-lista" id="ifLojas"></div>
     </div>
     <div class="if-dir">
       <div class="card mkt-panel">
-        <h2>📈 Faturamento da rede por dia <span class="tag" id="ifGrafTag">—</span></h2>
+        <h2><span id="ifGrafCab">📈 Faturamento da rede por dia</span> <span class="tag" id="ifGrafTag">—</span></h2>
         <div class="if-graf" id="ifGraf"></div>
       </div>
       <div class="card mkt-panel">
@@ -2642,6 +2657,48 @@ async function carregarIfood() {
   renderIfood();
 }
 
+let ifLoja = (() => { try { return localStorage.getItem('ifLoja') || ''; } catch (e) { return ''; } })();
+const ifSomaDias = (dia, n) => { const t = new Date(dia + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
+
+// faturamento e pedidos por dia (da rede, ou de uma loja), juntando todos os períodos do arquivo
+function ifSerie(d, lojaId) {
+  const m = new Map();
+  Object.values(d.periods || {}).forEach((q) => {
+    const o = lojaId ? (q.stores || []).find((s) => s.id === lojaId) : q.network;
+    const dias = q.days || [];
+    if (!o || !o.daily_gmv || o.daily_gmv.length !== dias.length) return;
+    dias.forEach((dia, i) => { if (!m.has(dia)) m.set(dia, { gmv: +o.daily_gmv[i] || 0, orders: o.daily_orders ? +o.daily_orders[i] || 0 : null }); });
+  });
+  return m;
+}
+
+// período anterior equivalente: Ontem → mesmo dia da semana passada; 7 dias → 7 dias antes;
+// mês → mesmos dias do mês anterior. Só compara se TODOS os dias de base estiverem no arquivo.
+function ifBaseComparacao(P, serie) {
+  const dias = P.days || [];
+  if (!dias.length) return null;
+  let base = [], label = '';
+  if (dias.length === 1) {
+    const alvo = ifSomaDias(dias[0], -7), dw = new Date(alvo + 'T12:00:00Z').getUTCDay();
+    const s = serie.get(alvo);
+    if (!s) return null;
+    return { ...s, label: `vs ${['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'][dw]} passad${dw % 6 === 0 ? 'o' : 'a'} (${ifDia(alvo)}: ${ifBrl(s.gmv)})` };
+  }
+  if (P.key === 'month' || P.key === 'lastmonth') {
+    base = dias.map((dia) => {
+      const [y, mo, dd] = dia.split('-').map(Number), t = new Date(Date.UTC(y, mo - 2, dd));
+      return t.getUTCDate() === dd ? t.toISOString().slice(0, 10) : null;
+    }).filter(Boolean);
+    label = 'vs mesmos dias do mês anterior';
+  } else {
+    base = dias.map((dia) => ifSomaDias(dia, -dias.length));
+    label = `vs ${dias.length} dias anteriores`;
+  }
+  if (!base.length || !base.every((x) => serie.has(x))) return null;
+  const tot = base.reduce((a, x) => { const s = serie.get(x); a.gmv += s.gmv; a.orders += s.orders || 0; return a; }, { gmv: 0, orders: 0 });
+  return { ...tot, label };
+}
+
 function renderIfood() {
   const d = ifDados;
   const vazio = (msg) => {
@@ -2678,40 +2735,67 @@ function renderIfood() {
   mS('ifFonte', 'Fonte: iFood' + (ifRecebido && ifRecebido.origem ? ' · enviado ' + (ifRecebido.origem === 'toqan' ? 'pelo Toqan' : 'pelo painel') : ''));
 
   if (P.empty || !P.network) { vazio('Sem dados do iFood para este período.'); return; }
-  const N = P.network;
-  let C = P.compare || {};
-  // "Ontem": compara com o MESMO dia da semana passada (ontem − 7), achado nas séries diárias dos outros períodos
-  if (ontem && P.days && P.days.length === 1) {
-    const ref = new Date(P.days[0] + 'T12:00:00'); ref.setDate(ref.getDate() - 7);
-    const alvo = ref.toISOString().slice(0, 10);
-    let base = null;
-    for (const k of Object.keys(d.periods)) {
-      const q = d.periods[k], i = (q.days || []).indexOf(alvo), nw = q.network || {};
-      if (k !== 'yesterday' && i >= 0 && nw.daily_gmv && nw.daily_gmv[i] != null) { base = { gmv: +nw.daily_gmv[i], orders: nw.daily_orders ? +nw.daily_orders[i] : null }; break; }
-    }
+
+  // filtro de loja: "Todas as lojas" (rede) ou um cliente só
+  const todas = new Map();
+  ordem.forEach((k) => (d.periods[k].stores || []).forEach((s) => { if (!todas.has(s.id)) todas.set(s.id, s.name); }));
+  const selL = document.getElementById('ifLoja');
+  const opsL = '<option value="">Todas as lojas</option>' + [...todas].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
+    .map(([id, nm]) => `<option value="${clEsc(id)}">${clEsc(nm)}</option>`).join('');
+  if (selL.innerHTML !== opsL) selL.innerHTML = opsL;
+  if (ifLoja && !todas.has(ifLoja)) ifLoja = '';
+  selL.value = ifLoja;
+  const lojas = (P.stores || []).slice().sort((a, b) => (b.gmv || 0) - (a.gmv || 0));
+  const L = ifLoja ? lojas.find((s) => s.id === ifLoja) : null;
+  if (ifLoja && !L) { vazio(`Sem dados de ${clEsc(todas.get(ifLoja))} neste período.`); return; }
+  if (L) mS('ifTitulo', (P.label || '') + (P.range_label ? ' (' + P.range_label + ')' : '') + ' · ' + L.name);
+
+  const N = L || P.network;
+  const serie = ifSerie(d, L ? L.id : null);
+  // comparação: rede usa a do Toqan; "Ontem" e loja usam as séries diárias do próprio arquivo
+  let C = L ? {} : (P.compare || {});
+  if (ontem || L) {
+    const base = ifBaseComparacao(P, serie);
     if (base && base.gmv > 0) {
       const v = (a, b) => (a == null || !b) ? null : (a / b - 1) * 100;
-      const tkB = base.orders ? base.gmv / base.orders : null;
-      const semana = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'][ref.getDay()];
-      C = { label: `vs ${semana} passad${ref.getDay() % 6 === 0 ? 'o' : 'a'} (${ifDia(alvo)}: ${ifBrl(base.gmv)})`, gmv: v(N.gmv, base.gmv), orders: v(N.orders, base.orders), ticket: v(N.ticket, tkB) };
-    }
+      C = { label: base.label, gmv: v(N.gmv, base.gmv), orders: v(N.orders, base.orders), ticket: v(N.ticket, base.orders ? base.gmv / base.orders : null) };
+    } else if (base) C = { label: base.label.replace(/: R\$\s?0\)$/, ')') + ' — não houve venda' };
+    else if (L) C = { label: 'sem período anterior no arquivo para comparar' };
   }
   const cmp = C.label ? `<span>${clEsc(C.label)}</span>` : '';
   // cancelamento segue o filtro (em "Ontem" é só o dia de ontem, não os 7 dias)
   const cancPct = N.cancel_pct;
   const cancQtd = N.cancel;
-  const ativas = (P.stores || []).filter((s) => (s.orders || 0) > 0).length;
+  const ativas = lojas.filter((s) => (s.orders || 0) > 0).length;
+  const posL = L ? lojas.indexOf(L) + 1 : 0;
+  const tk7 = ontem ? (L ? (L.orders_7d ? L.trend_total / L.orders_7d : null) : N.ticket_7d) : null;
 
   document.getElementById('ifKpis').innerHTML = [
-    ['💰', 'Faturamento da rede', ifBrl(N.gmv), `${ifVar(C.gmv)}${cmp}`, true],
-    ['🧾', 'Pedidos', ifNum(N.orders), `${ifVar(C.orders)}<span>${ativas} de ${(P.stores || []).length} lojas venderam</span>`],
-    ['🎟️', 'Ticket médio', ifBrl2(N.ticket), `${ifVar(C.ticket)}${ontem && N.ticket_7d != null ? `<span>7 dias: ${ifBrl2(N.ticket_7d)}</span>` : ''}`],
+    ['💰', L ? 'Faturamento da loja' : 'Faturamento da rede', ifBrl(N.gmv), `${ifVar(C.gmv)}${cmp}`, true],
+    ['🧾', 'Pedidos', ifNum(N.orders), `${ifVar(C.orders)}<span>${L ? `${posL}º de ${lojas.length} lojas em faturamento` : `${ativas} de ${lojas.length} lojas venderam`}</span>`],
+    ['🎟️', 'Ticket médio', ifBrl2(N.ticket), `${ifVar(C.ticket)}${tk7 != null ? `<span>7 dias: ${ifBrl2(tk7)}</span>` : ''}`],
     ['✖️', 'Cancelamento', `<span class="${ifCorCanc(cancPct)}">${ifPct(cancPct)}</span>`, `<span>${ifNum(cancQtd)} ${cancQtd === 1 ? 'pedido cancelado' : 'pedidos cancelados'}</span>`],
     ['⭐', 'Avaliação média', `<span class="${ifCorNota(N.rating)}">${ifNota(N.rating)}</span>`, `<span>${ifNum(N.reviews || 0)} avaliações no período</span>`]
   ].map(([ic, t, v, s, dest]) => `<div class="card if-kpi${dest ? ' dest' : ''}"><div class="t"><span>${ic}</span>${t}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
 
+  const td = P.trend_days || P.days || [];
+  if (L) {
+    // uma loja: no lugar do ranking, o dia a dia dela
+    const linhas = td.map((dia) => ({ dia, ...(serie.get(dia) || {}) }));
+    const maxD = Math.max(1, ...linhas.map((x) => x.gmv || 0));
+    mS('ifLojasCab', '📅 Dia a dia');
+    mS('ifLojasTag', L.name.toUpperCase());
+    document.getElementById('ifThead').hidden = true;
+    document.getElementById('ifLojas').innerHTML = `<div class="if-dthead"><div>Dia</div><div>Faturamento</div><div>Pedidos</div><div>Ticket</div></div>`
+      + linhas.slice().reverse().map((x) => `<div class="if-drow${x.gmv ? '' : ' zero'}">
+        <div><b>${ifSem(x.dia)}</b> ${ifDia(x.dia)}</div>
+        <div class="fat"><b>${x.gmv == null ? '—' : ifBrl(x.gmv)}</b><i style="width:${((x.gmv || 0) / maxD * 100).toFixed(1)}%"></i></div>
+        <div class="n">${x.orders == null ? '—' : ifNum(x.orders)}</div>
+        <div class="n">${x.orders ? ifBrl2(x.gmv / x.orders) : '—'}</div></div>`).join('');
+  } else {
+  mS('ifLojasCab', '🏪 Lojas');
+  document.getElementById('ifThead').hidden = false;
   // lojas, da que mais faturou para a que menos
-  const lojas = (P.stores || []).slice().sort((a, b) => (b.gmv || 0) - (a.gmv || 0));
   const maxG = Math.max(1, ...lojas.map((s) => s.gmv || 0));
   mS('ifLojasTag', lojas.length + ' LOJAS');
   mS('ifThCanc', 'Cancel.');
@@ -2728,11 +2812,13 @@ function renderIfood() {
       <div>${ifSpark(s.trend)}</div>
     </div>`;
   }).join('') || '<div class="if-vazio">Nenhuma loja neste período.</div>';
+  }
 
-  // faturamento da rede por dia
-  const tv = (P.trend || []).map((x) => +x || 0), td = P.trend_days || P.days || [];
+  // faturamento por dia (rede ou loja)
+  const tv = ((L ? L.trend : P.trend) || []).map((x) => +x || 0);
   const maxT = Math.max(1, ...tv);
   const poucos = tv.length <= 11;
+  mS('ifGrafCab', L ? '📈 Faturamento da loja por dia' : '📈 Faturamento da rede por dia');
   mS('ifGrafTag', (P.trend_total_label || (td.length + ' DIAS')).toUpperCase());
   document.getElementById('ifGraf').innerHTML = tv.map((x, i) => {
     const dia = td[i] || '';
@@ -2742,10 +2828,15 @@ function renderIfood() {
     return `<div class="col${hl ? ' hl' : ''}" title="${ifDia(dia)}: ${ifBrl(x)}"><span class="val">${val}</span><div class="bar" style="height:${(x / maxT * 82).toFixed(1)}%"></div><span class="dia">${rot}</span></div>`;
   }).join('');
 
-  // motivos de cancelamento
-  const mot = (P.cancel_reasons || []).slice().sort((a, b) => (b.count || 0) - (a.count || 0));
+  // motivos de cancelamento (por loja só se o arquivo trouxer cancel_reasons dentro da loja)
+  if (L && !Array.isArray(L.cancel_reasons)) {
+    mS('ifMotTag', 'SÓ DA REDE');
+    document.getElementById('ifMotivos').innerHTML = `<div class="if-vazio"><span>Esta loja teve <b>${ifNum(L.cancel || 0)}</b> ${L.cancel === 1 ? 'cancelamento' : 'cancelamentos'} no período.<br><small>O arquivo do iFood traz os motivos só da rede toda, não por loja.</small></span></div>`;
+    return;
+  }
+  const mot = ((L ? L.cancel_reasons : P.cancel_reasons) || []).slice().sort((a, b) => (b.count || 0) - (a.count || 0));
   const maxM = Math.max(1, ...mot.map((m) => m.count || 0));
-  mS('ifMotTag', (P.reasons_note || P.label || '').toUpperCase());
+  mS('ifMotTag', (L ? (P.label || '') : (P.reasons_note || P.label || '')).toUpperCase());
   document.getElementById('ifMotivos').innerHTML = mot.length ? mot.slice(0, 6).map((m) => `<div class="if-mot">
       <div class="l"><span title="${clEsc(m.reason)}">${clEsc(m.reason)}</span><b>${ifNum(m.count)}</b></div>
       <i style="width:${((m.count || 0) / maxM * 100).toFixed(1)}%"></i></div>`).join('')
@@ -2755,6 +2846,11 @@ function renderIfood() {
 document.getElementById('ifPeriodo').addEventListener('change', (e) => {
   ifPer = e.target.value;
   try { localStorage.setItem('ifPeriodo', ifPer); } catch (er) {}
+  renderIfood();
+});
+document.getElementById('ifLoja').addEventListener('change', (e) => {
+  ifLoja = e.target.value;
+  try { localStorage.setItem('ifLoja', ifLoja); } catch (er) {}
   renderIfood();
 });
 
