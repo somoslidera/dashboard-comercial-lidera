@@ -399,7 +399,8 @@
   .if-row .fat b{font-family:'Fraunces',serif;font-weight:600;font-size:1.08em}
   .if-row .fat i{display:block;height:4px;border-radius:4px;background:linear-gradient(90deg,var(--if-red),var(--if-red-soft));min-width:2px}
   .if-row .n{text-align:right;color:var(--text-2);font-weight:600}
-  .if-row .cx{text-align:right;font-weight:700}
+  .if-row .cx{text-align:right;font-weight:700;display:flex;flex-direction:column;line-height:1.15}
+  .if-row .cx small{color:var(--text-3);font-weight:600;font-size:.75em;white-space:nowrap}
   .if-row .nota{text-align:right;font-weight:700;color:var(--gold-soft)}
   .if-row .nota small{color:var(--text-3);font-weight:600;font-size:.75em;margin-left:3px}
   .if-row svg{width:100%;height:clamp(16px,2.4vh,26px);display:block}
@@ -2698,13 +2699,14 @@ function renderIfood() {
   mS('ifThCanc', ontem ? 'Cancel. 7d' : 'Cancel.');
   document.getElementById('ifLojas').innerHTML = lojas.map((s, i) => {
     const canc = s.status_cancel_pct != null ? s.status_cancel_pct : s.cancel_pct;
+    const cancN = ontem && s.cancel_7d != null ? s.cancel_7d : s.cancel;   // "Ontem" mostra % de 7 dias → quantidade de 7 dias também
     return `<div class="if-row${(s.gmv || 0) <= 0 ? ' zero' : ''}">
       <div class="pos">${i + 1}</div>
       <div class="nm"><b title="${clEsc(s.name)}">${clEsc(s.name)}</b><small>${clEsc(s.city || '')}</small></div>
       <div class="fat"><b>${ifBrl(s.gmv)}</b><i style="width:${((s.gmv || 0) / maxG * 100).toFixed(1)}%"></i></div>
       <div class="n">${ifNum(s.orders)}</div>
       <div class="n">${ifBrl2(s.ticket)}</div>
-      <div class="cx ${ifCorCanc(canc)}">${ifPct(canc)}</div>
+      <div class="cx ${ifCorCanc(canc)}">${ifPct(canc)}${cancN != null ? `<small>${ifNum(cancN)} canc.</small>` : ''}</div>
       <div class="nota ${ifCorNota(s.rating)}">${ifNota(s.rating)}${s.reviews ? `<small>(${s.reviews})</small>` : ''}</div>
       <div>${ifSpark(s.trend)}</div>
     </div>`;
