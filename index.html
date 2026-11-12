@@ -367,6 +367,56 @@
   .cl-cfoot{flex:0 0 auto;margin-top:8px;font-size:clamp(9px,1.15vh,12px);color:var(--text-3);line-height:1.5}
   .cl-cfoot b{color:var(--text-2)}
   .cl-aviso{grid-column:1/-1;display:grid;place-items:center;text-align:center;color:var(--text-2);font-size:clamp(13px,1.8vh,18px);line-height:1.6;padding:0 15%}
+
+  /* ── PAINEL iFOOD (lojas dos clientes, arquivo vindo do Toqan) ── */
+  #viewIfood{--if-red:#EA1D2C;--if-red-soft:#F4717A;--if-ok:#4FD1A5;--if-mid:#F0B860;--if-bad:#E8836B}
+  #viewIfood .overline{color:var(--if-red-soft)}
+  .if-kpis{flex:0 0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap)}
+  .if-kpi{padding:clamp(10px,1.7vh,20px) clamp(12px,1.3vw,22px);display:flex;flex-direction:column;gap:clamp(4px,.7vh,9px)}
+  .if-kpi .t{display:flex;align-items:center;gap:8px;color:var(--text-2);font-weight:700;font-size:clamp(9px,1.15vh,12px);text-transform:uppercase;letter-spacing:.12em}
+  .if-kpi .v{font-family:'Fraunces',serif;font-weight:600;line-height:1;font-size:clamp(22px,4vh,42px);font-variant-numeric:tabular-nums}
+  .if-kpi.dest .v{color:var(--gold-soft)}
+  .if-kpi .s{color:var(--text-3);font-size:clamp(9px,1.1vh,12px);font-weight:600;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .if-var{font-weight:800;font-size:clamp(9px,1.15vh,12px);padding:2px 7px;border-radius:100px;background:rgba(255,255,255,.06)}
+  .if-var.up{color:var(--if-ok);background:rgba(79,209,165,.12)}
+  .if-var.dn{color:var(--if-bad);background:rgba(232,131,107,.12)}
+  .if-corpo{flex:1;display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);gap:var(--gap);min-height:0}
+  .if-dir{display:grid;grid-template-rows:1.15fr 1fr;gap:var(--gap);min-height:0}
+  .if-thead,.if-row{display:grid;grid-template-columns:clamp(18px,1.6vw,28px) minmax(0,2.3fr) minmax(0,1.6fr) .7fr .85fr .8fr .75fr minmax(0,1fr);gap:clamp(6px,.7vw,12px);align-items:center}
+  .if-thead{color:var(--text-3);font-size:clamp(8px,1vh,11px);font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:0 clamp(6px,.6vw,10px) 6px;border-bottom:1px solid var(--line)}
+  .if-thead div:not(:nth-child(2)){text-align:right}
+  .if-thead div:nth-child(3){text-align:left}
+  .if-lista{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;padding-top:4px}
+  .if-lista::-webkit-scrollbar{width:6px}.if-lista::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:6px}
+  .if-row{flex:1 0 auto;min-height:clamp(22px,2.9vh,40px);padding:0 clamp(6px,.6vw,10px);border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;font-size:clamp(10px,1.35vh,14px)}
+  .if-row:last-child{border-bottom:none}
+  .if-row.zero{opacity:.45}
+  .if-row .pos{color:var(--text-3);font-weight:800;text-align:right;font-size:.9em}
+  .if-row .nm{min-width:0;display:flex;flex-direction:column;line-height:1.15}
+  .if-row .nm b{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .if-row .nm small{color:var(--text-3);font-size:.78em;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .if-row .fat{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .if-row .fat b{font-family:'Fraunces',serif;font-weight:600;font-size:1.08em}
+  .if-row .fat i{display:block;height:4px;border-radius:4px;background:linear-gradient(90deg,var(--if-red),var(--if-red-soft));min-width:2px}
+  .if-row .n{text-align:right;color:var(--text-2);font-weight:600}
+  .if-row .cx{text-align:right;font-weight:700}
+  .if-row .nota{text-align:right;font-weight:700;color:var(--gold-soft)}
+  .if-row .nota small{color:var(--text-3);font-weight:600;font-size:.75em;margin-left:3px}
+  .if-row svg{width:100%;height:clamp(16px,2.4vh,26px);display:block}
+  #viewIfood .ok{color:var(--if-ok)}#viewIfood .mid{color:var(--if-mid)}#viewIfood .bad{color:var(--if-bad)}
+  .if-graf{flex:1;display:flex;align-items:flex-end;gap:clamp(2px,.35vw,8px);min-height:0;padding-top:14px}
+  .if-graf .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0;gap:4px}
+  .if-graf .bar{width:100%;max-width:56px;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,rgba(244,113,122,.75),rgba(234,29,44,.35));min-height:2px}
+  .if-graf .col.hl .bar{background:linear-gradient(180deg,var(--gold-soft),rgba(203,167,94,.4))}
+  .if-graf .val{font-size:clamp(8px,1vh,11px);color:var(--text-2);font-weight:700;white-space:nowrap}
+  .if-graf .dia{font-size:clamp(8px,1vh,11px);color:var(--text-3);font-weight:700;white-space:nowrap}
+  .if-motivos{flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:6px;min-height:0;overflow:hidden}
+  .if-mot .l{display:flex;justify-content:space-between;gap:10px;font-size:clamp(10px,1.3vh,14px);margin-bottom:4px}
+  .if-mot .l span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-2)}
+  .if-mot .l b{font-family:'Fraunces',serif;font-weight:600}
+  .if-mot i{display:block;height:6px;border-radius:6px;background:var(--if-bad);opacity:.8}
+  .if-vazio{flex:1;display:grid;place-items:center;text-align:center;color:var(--text-2);font-size:clamp(13px,1.8vh,18px);line-height:1.6;padding:0 12%}
+  .if-velho{color:var(--if-bad)}
 </style>
 </head>
 <body>
@@ -647,6 +697,61 @@
     <span id="clStatus">Carregando…</span>
     <span>Projeção = ritmo de vendas × dias de funcionamento · Resultado = receitas − despesas, contas do mês e taxas (mesma conta do Flow)</span>
     <span>Atualiza a cada 10 minutos</span>
+  </footer>
+</div>
+
+<!-- ══════════════════ PAINEL iFOOD (lojas dos clientes — arquivo enviado pelo Toqan) ══════════════════ -->
+<div class="dashboard" id="viewIfood" hidden>
+  <header>
+    <div class="brand-block">
+      <div class="overline">iFood dos Clientes</div>
+      <div class="brand">Lidera <span>Soluções</span></div>
+    </div>
+    <div class="title">Resultado no iFood · <b id="ifTitulo">—</b></div>
+    <div class="header-controls">
+      <div class="mes-filtro-wrap">
+        <select class="mes-filtro view-select" aria-label="Escolher painel">
+          <option value="vendas">Comercial</option>
+          <option value="marketing">Marketing</option>
+          <option value="sdr">SDR</option>
+          <option value="clientes">Clientes</option>
+          <option value="ifood">iFood</option>
+        </select>
+      </div>
+      <div class="mes-filtro-wrap">
+        <select class="mes-filtro" id="ifPeriodo" aria-label="Período"></select>
+      </div>
+      <button type="button" class="btn-olho" id="ifEnviar" title="Enviar arquivo do iFood (data.json)" aria-label="Enviar arquivo do iFood">
+        <svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>
+      </button>
+      <input type="file" id="ifArquivo" accept=".json,application/json" hidden>
+    </div>
+  </header>
+
+  <section class="if-kpis" id="ifKpis"></section>
+
+  <section class="if-corpo">
+    <div class="card mkt-panel">
+      <h2>🏪 Lojas <span class="tag" id="ifLojasTag">—</span></h2>
+      <div class="if-thead"><div>#</div><div>Loja</div><div>Faturamento</div><div>Pedidos</div><div>Ticket</div><div id="ifThCanc">Cancel.</div><div>Nota</div><div>Tendência</div></div>
+      <div class="if-lista" id="ifLojas"></div>
+    </div>
+    <div class="if-dir">
+      <div class="card mkt-panel">
+        <h2>📈 Faturamento da rede por dia <span class="tag" id="ifGrafTag">—</span></h2>
+        <div class="if-graf" id="ifGraf"></div>
+      </div>
+      <div class="card mkt-panel">
+        <h2>⚠️ Motivos de cancelamento <span class="tag" id="ifMotTag">—</span></h2>
+        <div class="if-motivos" id="ifMotivos"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span id="ifStatus">Carregando…</span>
+    <span id="ifFonte">Dados do iFood</span>
+    <span>Atualiza a cada 30 minutos</span>
   </footer>
 </div>
 
@@ -2470,6 +2575,179 @@ function renderCompras(j) {
     <div class="cl-cfoot">${semBase.length ? `<b>Comprou sem ter venda lançada na semana passada (sem meta de compra):</b> ${semBase.map((c) => `${clEsc(c.nome)} (${clBrl(c.compras.comprado)})`).join(' · ')}<br>` : ''}`
       + `${nada.length} cliente(s) sem venda na semana passada e sem compra nesta semana.</div>`;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   PAINEL iFOOD — resultado das lojas dos clientes no iFood
+   O app no Toqan gera o data.json e manda para /api/ifood-receber (ou o botão ⬆ envia à mão).
+   Isolado: lê só /api/ifood e só mexe nos elementos #if*.
+   ═══════════════════════════════════════════════════════════ */
+VIEWS.ifood = document.getElementById('viewIfood');
+document.querySelectorAll('.view-select').forEach((s) => {
+  [['vendas', 'Comercial'], ['marketing', 'Marketing'], ['sdr', 'SDR'], ['clientes', 'Clientes'], ['ifood', 'iFood']].forEach(([v, t]) => {
+    if (!s.querySelector(`option[value="${v}"]`)) s.add(new Option(t, v));
+  });
+  s.value = viewAtiva;
+});
+if (location.pathname.replace(/\/+$/, '') === '/ifood') viewAtiva = 'ifood';   // link direto /ifood
+let ifIntervalo = null;
+const trocarViewAntesIfood = trocarView;
+trocarView = function (v) {
+  trocarViewAntesIfood(v);
+  if (viewAtiva === 'ifood') {
+    carregarIfood();
+    if (!ifIntervalo) ifIntervalo = setInterval(() => { if (viewAtiva === 'ifood') carregarIfood(); }, 30 * 60 * 1000);
+  }
+};
+
+let ifDados = null, ifRecebido = null;
+let ifPer = (() => { try { return localStorage.getItem('ifPeriodo') || ''; } catch (e) { return ''; } })();
+const ifBrl = (v) => v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+const ifBrl2 = (v) => v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const ifNum = (v) => v == null ? '—' : v.toLocaleString('pt-BR');
+const ifPct = (v) => v == null ? '—' : v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+const ifNota = (v) => v == null ? '—' : v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const ifCorCanc = (v) => v == null ? '' : v <= 3 ? 'ok' : v <= 6 ? 'mid' : 'bad';
+const ifCorNota = (v) => v == null ? '' : v >= 4.5 ? 'ok' : v >= 4 ? 'mid' : 'bad';
+const ifVar = (v) => v == null || !isFinite(v) ? '' :
+  `<span class="if-var ${v > 0.05 ? 'up' : v < -0.05 ? 'dn' : ''}">${v > 0 ? '▲' : v < 0 ? '▼' : '='} ${Math.abs(v).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span>`;
+const ifDia = (d) => d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '';
+const ifSem = (d) => ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][new Date(d + 'T12:00:00').getDay()];
+
+function ifSpark(arr) {
+  const v = (arr || []).map((x) => +x || 0);
+  if (v.length < 2) return '';
+  const max = Math.max(...v, 1), W = 100, H = 30, p = 3;
+  const pts = v.map((x, i) => `${(i / (v.length - 1) * W).toFixed(1)},${(H - p - x / max * (H - 2 * p)).toFixed(1)}`);
+  const ult = pts[pts.length - 1].split(',');
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${pts.join(' ')}" fill="none" stroke="var(--if-red-soft)" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round"/><circle cx="${ult[0]}" cy="${ult[1]}" r="2.2" fill="var(--gold-soft)"/></svg>`;
+}
+
+async function carregarIfood() {
+  try {
+    const r = await fetch('/api/ifood', { cache: 'no-store' });
+    if (r.status === 401) { location.href = '/login.html?volta=/ifood'; return; }
+    const j = await r.json();
+    if (j.erro) { mS('ifStatus', 'Não consegui ler os dados do iFood (' + j.erro + ')'); return; }
+    ifDados = j.vazio ? null : j.dados;
+    ifRecebido = j.recebido || null;
+  } catch (e) { mS('ifStatus', 'Sem conexão — tentando novamente…'); return; }
+  renderIfood();
+}
+
+function renderIfood() {
+  const d = ifDados;
+  const vazio = (msg) => {
+    document.getElementById('ifKpis').innerHTML = '';
+    document.getElementById('ifLojas').innerHTML = `<div class="if-vazio">${msg}</div>`;
+    ['ifGraf', 'ifMotivos'].forEach((id) => { document.getElementById(id).innerHTML = ''; });
+  };
+  if (!d) {
+    vazio('Ainda não chegou nenhum arquivo do iFood.<br><small>Ele chega sozinho pelo Toqan, ou você pode enviar o <b>data.json</b> pelo botão ⬆ no alto da tela.</small>');
+    mS('ifTitulo', '—'); mS('ifStatus', 'Aguardando o primeiro envio');
+    return;
+  }
+
+  // seletor de período (Ontem / Últimos 7 dias / Este mês / Mês passado)
+  const ordem = (d.order || []).filter((k) => d.periods && d.periods[k]);
+  if (!ordem.includes(ifPer)) ifPer = ordem.includes(d.default) ? d.default : ordem[0];
+  const sel = document.getElementById('ifPeriodo');
+  const ops = ordem.map((k) => `<option value="${k}">${clEsc(d.periods[k].label || k)}</option>`).join('');
+  if (sel.innerHTML !== ops) sel.innerHTML = ops;
+  sel.value = ifPer;
+
+  const P = d.periods[ifPer];
+  const ontem = ifPer === 'yesterday';
+  mS('ifTitulo', (P.label || '') + (P.range_label ? ' (' + P.range_label + ')' : ''));
+
+  // rodapé: quando o arquivo foi gerado (avisa se estiver velho)
+  const ger = d.generated_at ? new Date(d.generated_at) : null;
+  const horas = ger ? (Date.now() - ger.getTime()) / 36e5 : null;
+  const st = document.getElementById('ifStatus');
+  st.className = horas != null && horas > 36 ? 'if-velho' : '';
+  st.textContent = ger
+    ? 'Dados gerados em ' + ger.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' às ' + ger.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + (horas > 36 ? ' — desatualizado' : '')
+    : 'Data de geração desconhecida';
+  mS('ifFonte', 'Fonte: iFood' + (ifRecebido && ifRecebido.origem ? ' · enviado ' + (ifRecebido.origem === 'toqan' ? 'pelo Toqan' : 'pelo painel') : ''));
+
+  if (P.empty || !P.network) { vazio('Sem dados do iFood para este período.'); return; }
+  const N = P.network, C = P.compare || {};
+  const cmp = C.label ? `<span>${clEsc(C.label)}</span>` : '';
+  const cancPct = ontem && N.cancel_pct_7d != null ? N.cancel_pct_7d : N.cancel_pct;
+  const cancQtd = ontem && N.cancel_7d != null ? N.cancel_7d : N.cancel;
+  const ativas = (P.stores || []).filter((s) => (s.orders || 0) > 0).length;
+
+  document.getElementById('ifKpis').innerHTML = [
+    ['💰', 'Faturamento da rede', ifBrl(N.gmv), `${ifVar(C.gmv)}${cmp}`, true],
+    ['🧾', 'Pedidos', ifNum(N.orders), `${ifVar(C.orders)}<span>${ativas} de ${(P.stores || []).length} lojas venderam</span>`],
+    ['🎟️', 'Ticket médio', ifBrl2(N.ticket), `${ifVar(C.ticket)}${ontem && N.ticket_7d != null ? `<span>7 dias: ${ifBrl2(N.ticket_7d)}</span>` : ''}`],
+    ['✖️', 'Cancelamento', `<span class="${ifCorCanc(cancPct)}">${ifPct(cancPct)}</span>`, `<span>${ifNum(cancQtd)} pedidos cancelados${ontem ? ' · últimos 7 dias' : ''}</span>`],
+    ['⭐', 'Avaliação média', `<span class="${ifCorNota(N.rating)}">${ifNota(N.rating)}</span>`, `<span>${ifNum(N.reviews || 0)} avaliações no período</span>`]
+  ].map(([ic, t, v, s, dest]) => `<div class="card if-kpi${dest ? ' dest' : ''}"><div class="t"><span>${ic}</span>${t}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
+
+  // lojas, da que mais faturou para a que menos
+  const lojas = (P.stores || []).slice().sort((a, b) => (b.gmv || 0) - (a.gmv || 0));
+  const maxG = Math.max(1, ...lojas.map((s) => s.gmv || 0));
+  mS('ifLojasTag', lojas.length + ' LOJAS');
+  mS('ifThCanc', ontem ? 'Cancel. 7d' : 'Cancel.');
+  document.getElementById('ifLojas').innerHTML = lojas.map((s, i) => {
+    const canc = s.status_cancel_pct != null ? s.status_cancel_pct : s.cancel_pct;
+    return `<div class="if-row${(s.gmv || 0) <= 0 ? ' zero' : ''}">
+      <div class="pos">${i + 1}</div>
+      <div class="nm"><b title="${clEsc(s.name)}">${clEsc(s.name)}</b><small>${clEsc(s.city || '')}</small></div>
+      <div class="fat"><b>${ifBrl(s.gmv)}</b><i style="width:${((s.gmv || 0) / maxG * 100).toFixed(1)}%"></i></div>
+      <div class="n">${ifNum(s.orders)}</div>
+      <div class="n">${ifBrl2(s.ticket)}</div>
+      <div class="cx ${ifCorCanc(canc)}">${ifPct(canc)}</div>
+      <div class="nota ${ifCorNota(s.rating)}">${ifNota(s.rating)}${s.reviews ? `<small>(${s.reviews})</small>` : ''}</div>
+      <div>${ifSpark(s.trend)}</div>
+    </div>`;
+  }).join('') || '<div class="if-vazio">Nenhuma loja neste período.</div>';
+
+  // faturamento da rede por dia
+  const tv = (P.trend || []).map((x) => +x || 0), td = P.trend_days || P.days || [];
+  const maxT = Math.max(1, ...tv);
+  const poucos = tv.length <= 11;
+  mS('ifGrafTag', (P.trend_total_label || (td.length + ' DIAS')).toUpperCase());
+  document.getElementById('ifGraf').innerHTML = tv.map((x, i) => {
+    const dia = td[i] || '';
+    const hl = ontem && i === tv.length - 1;
+    const rot = poucos ? `${ifSem(dia)} ${ifDia(dia)}` : (i % 3 === 0 || i === tv.length - 1 ? dia.slice(8, 10) : '');
+    const val = poucos ? (x >= 1000 ? (x / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'k' : Math.round(x)) : '';
+    return `<div class="col${hl ? ' hl' : ''}" title="${ifDia(dia)}: ${ifBrl(x)}"><span class="val">${val}</span><div class="bar" style="height:${(x / maxT * 82).toFixed(1)}%"></div><span class="dia">${rot}</span></div>`;
+  }).join('');
+
+  // motivos de cancelamento
+  const mot = (P.cancel_reasons || []).slice().sort((a, b) => (b.count || 0) - (a.count || 0));
+  const maxM = Math.max(1, ...mot.map((m) => m.count || 0));
+  mS('ifMotTag', (P.reasons_note || P.label || '').toUpperCase());
+  document.getElementById('ifMotivos').innerHTML = mot.length ? mot.slice(0, 6).map((m) => `<div class="if-mot">
+      <div class="l"><span title="${clEsc(m.reason)}">${clEsc(m.reason)}</span><b>${ifNum(m.count)}</b></div>
+      <i style="width:${((m.count || 0) / maxM * 100).toFixed(1)}%"></i></div>`).join('')
+    : '<div class="if-vazio">Nenhum cancelamento 🎉</div>';
+}
+
+document.getElementById('ifPeriodo').addEventListener('change', (e) => {
+  ifPer = e.target.value;
+  try { localStorage.setItem('ifPeriodo', ifPer); } catch (er) {}
+  renderIfood();
+});
+
+// envio manual do data.json (plano B, se o Toqan não conseguir mandar sozinho)
+document.getElementById('ifEnviar').addEventListener('click', () => document.getElementById('ifArquivo').click());
+document.getElementById('ifArquivo').addEventListener('change', async (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  mS('ifStatus', 'Enviando ' + f.name + '…');
+  try {
+    const texto = await f.text();
+    JSON.parse(texto);   // confere antes de mandar
+    const r = await fetch('/api/ifood-receber', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: texto });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) { mS('ifStatus', 'Arquivo recusado: ' + (j.detalhe || j.erro || r.status)); return; }
+    await carregarIfood();
+  } catch (er) { mS('ifStatus', 'Esse arquivo não é um JSON válido'); }
+});
 
 /* ═══════════════════════════════════════════════════════════
    AUTO-ATUALIZAÇÃO DO PAINEL — quando sai versão nova (git push), a TV recarrega sozinha.
