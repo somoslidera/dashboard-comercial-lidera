@@ -56,17 +56,18 @@ export function resultadoDoMes(org, ini, fim) {
   return { receitas: rec, despesas, valor, pct: rec > 0 ? valor / rec * 100 : null, temLancamento: ls.length > 0 || contas > 0 };
 }
 
-// semana de compras: segunda a domingo. A base da meta é a semana ANTERIOR inteira (seg–dom).
+// semana de compras: SÁBADO a SEXTA (pedido de 18/11/2026: o escritório não trabalha sáb/dom, então a
+// semana fecha na sexta e a equipe já acompanha a semana nova na segunda). Base da meta = sáb–sex anterior.
 export function semanas(hoje) {
   const d = new Date(hoje + 'T12:00:00Z');
-  const seg = new Date(d.getTime() - ((d.getUTCDay() + 6) % 7) * 86400000);
+  const sab = new Date(d.getTime() - ((d.getUTCDay() + 1) % 7) * 86400000);   // sáb=0, dom=1 … sex=6
   const mais = (x, n) => isoDia(new Date(x.getTime() + n * 86400000));
-  return { ini: isoDia(seg), fim: mais(seg, 6), antIni: mais(seg, -7), antFim: mais(seg, -1) };
+  return { ini: isoDia(sab), fim: mais(sab, 6), antIni: mais(sab, -7), antFim: mais(sab, -1) };
 }
 
 // CMV LANÇADO do mês = igual ao Flow (cmvLancPeriodo): lançamentos do grupo "CMV" ÷ receitas do mês.
-// META DE COMPRA da semana = regra do comercial: vendido na semana anterior (seg–dom) × CMV alvo.
-//   Fica fixa a semana inteira (muda toda segunda). Comprado = lançamentos "CMV" de segunda até hoje.
+// META DE COMPRA da semana = regra do comercial: vendido na semana anterior (sáb–sex) × CMV alvo.
+//   Fica fixa a semana inteira (muda todo sábado). Comprado = lançamentos "CMV" de sábado até hoje.
 export function comprasDoCliente(org, { mesIni, mesFim, hoje }) {
   const tipos = org.catTipos || {};
   const ls = org.lanc || [];

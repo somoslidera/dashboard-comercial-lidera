@@ -2554,7 +2554,7 @@ function renderClientes(j) {
   mS('clStatus', 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' · ' + j.clientes.length + ' clientes no Flow');
 }
 
-// ── Compras da semana: meta = vendido na semana anterior × CMV alvo (fixa de segunda a domingo) ──
+// ── Compras da semana: meta = vendido na semana anterior × CMV alvo (fixa de sábado a sexta) ──
 const CP_COR = { estourou: 'var(--c-critico)', limite: 'var(--c-atencao)', dentro: 'var(--c-supernova)' };
 const CP_NOME = { estourou: 'passaram da meta', limite: 'perto do limite (≥ 85%)', dentro: 'dentro da meta' };
 function renderCompras(j) {
@@ -2732,7 +2732,9 @@ function renderIfood() {
   st.textContent = ger
     ? 'Dados gerados em ' + ger.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' às ' + ger.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + (horas > 36 ? ' — desatualizado' : '')
     : 'Data de geração desconhecida';
-  mS('ifFonte', 'Fonte: iFood' + (ifRecebido && ifRecebido.origem ? ' · enviado ' + (ifRecebido.origem === 'toqan' ? 'pelo Toqan' : 'pelo painel') : ''));
+  const rec = ifRecebido && ifRecebido.em ? new Date(ifRecebido.em) : null;
+  mS('ifFonte', 'Fonte: iFood' + (ifRecebido && ifRecebido.origem ? ' · enviado ' + (ifRecebido.origem === 'toqan' ? 'pelo Toqan' : 'pelo painel') : '')
+    + (rec ? ' em ' + rec.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' às ' + rec.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''));
 
   if (P.empty || !P.network) { vazio('Sem dados do iFood para este período.'); return; }
 
