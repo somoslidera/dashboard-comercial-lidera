@@ -398,7 +398,12 @@
   .if-row .fat{display:flex;flex-direction:column;gap:3px;min-width:0}
   .if-row .fat b{font-family:'Fraunces',serif;font-weight:600;font-size:1.08em}
   .if-row .fat i{display:block;height:4px;border-radius:4px;background:linear-gradient(90deg,var(--if-red),var(--if-red-soft));min-width:2px}
-  .if-row .n{text-align:right;color:var(--text-2);font-weight:600}
+  .if-row .n{text-align:right;color:var(--text-2);font-weight:600;display:flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+  .if-row .fat .fl{display:flex;align-items:baseline;gap:6px;min-width:0;white-space:nowrap}
+  .if-row .dv{font-size:.72em;font-weight:800;color:var(--text-3);white-space:nowrap;font-family:inherit}
+  .if-row .dv.up{color:var(--if-ok)}
+  .if-row .dv.dn{color:var(--if-bad)}
+  .if-row .cx small .dv{font-size:1em}
   .if-row .cx{text-align:right;font-weight:700;display:flex;flex-direction:column;line-height:1.15}
   .if-row .cx small{color:var(--text-3);font-weight:600;font-size:.75em;white-space:nowrap}
   .if-row .nota{text-align:right;font-weight:700;color:var(--gold-soft)}
@@ -2710,6 +2715,21 @@ function ifBaseComparacao(P, serie) {
   return { ...tot, label: `${label} (${ifDia(base[0])} a ${ifDia(base[base.length - 1])})` };
 }
 
+// período anterior da rede (lojaId vazio) ou de uma loja: bloco "previous" do arquivo, se vier; senão as séries diárias
+function ifBaseDe(d, P, lojaId, serie) {
+  const pv = P.previous && (lojaId ? (P.previous.stores || []).find((s) => s.id === lojaId) : P.previous.network);
+  if (pv) return { gmv: +pv.gmv || 0, orders: pv.orders, cancel: pv.cancel, cancel_pct: pv.cancel_pct,
+    label: P.previous.label || (P.previous.start ? `vs ${ifDia(P.previous.start)}${P.previous.end && P.previous.end !== P.previous.start ? ' a ' + ifDia(P.previous.end) : ''}` : 'vs período anterior') };
+  return ifBaseComparacao(P, serie || ifSerie(d, lojaId));
+}
+// variação pequena para a tabela de lojas (inv = subir é ruim, como no cancelamento)
+function ifDv(a, b, inv) {
+  if (a == null || b == null) return '';
+  if (!b) return a ? `<small class="dv ${inv ? 'dn' : 'up'}" title="antes: 0">novo</small>` : '';
+  const x = (a / b - 1) * 100, bom = inv ? x < -0.05 : x > 0.05, ruim = inv ? x > 0.05 : x < -0.05;
+  return `<small class="dv ${bom ? 'up' : ruim ? 'dn' : ''}">${x > 0 ? '▲' : x < 0 ? '▼' : '='}${Math.abs(x).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%</small>`;
+}
+
 function renderIfood() {
   const d = ifDados;
   const vazio = (msg) => {
@@ -2775,11 +2795,7 @@ function renderIfood() {
   // comparação com o período anterior equivalente (ver ifBaseComparacao):
   //   1º o bloco "previous" do arquivo, se o Toqan mandar (traz também o cancelamento);
   //   2º as séries diárias do próprio arquivo;  3º o "compare" pronto do Toqan (só rede).
-  let base = null;
-  const pv = P.previous && (L ? (P.previous.stores || []).find((s) => s.id === L.id) : P.previous.network);
-  if (pv) base = { gmv: +pv.gmv || 0, orders: pv.orders, cancel: pv.cancel, cancel_pct: pv.cancel_pct,
-    label: P.previous.label || (P.previous.start ? `vs ${ifDia(P.previous.start)}${P.previous.end && P.previous.end !== P.previous.start ? ' a ' + ifDia(P.previous.end) : ''}` : 'vs período anterior') };
-  else base = ifBaseComparacao(P, serie);
+  const base = ifBaseDe(d, P, L ? L.id : null, serie);
   let C = {};
   const v = (a, b) => (a == null || b == null || !b) ? null : (a / b - 1) * 100;
   if (base && base.gmv > 0) C = { label: base.label, gmv: v(N.gmv, base.gmv), orders: v(N.orders, base.orders), ticket: v(N.ticket, base.orders ? base.gmv / base.orders : null) };
@@ -2830,17 +2846,21 @@ function renderIfood() {
   document.getElementById('ifThead').hidden = false;
   // lojas, da que mais faturou para a que menos
   const maxG = Math.max(1, ...lojas.map((s) => s.gmv || 0));
-  mS('ifLojasTag', lojas.length + ' LOJAS');
+  // ▲▼ de cada loja contra o período anterior equivalente dela (mesma regra dos cards de cima)
+  const tagCmp = base ? ' · ▲▼ ' + base.label.replace(/\s*\(\d\d\/\d\d: R\$[^)]*\)/, (m) => ' (' + m.match(/\d\d\/\d\d/)[0] + ')') : '';
+  mS('ifLojasTag', (lojas.length + ' LOJAS' + tagCmp).toUpperCase());
   mS('ifThCanc', 'Cancel.');
   document.getElementById('ifLojas').innerHTML = lojas.map((s, i) => {
     const canc = s.cancel_pct, cancN = s.cancel;   // do período escolhido no filtro
+    const b = ifBaseDe(d, P, s.id);
+    const bT = b && b.orders ? b.gmv / b.orders : null;
     return `<div class="if-row${(s.gmv || 0) <= 0 ? ' zero' : ''}">
       <div class="pos">${i + 1}</div>
       <div class="nm"><b title="${clEsc(s.name)}">${clEsc(s.name)}</b><small>${clEsc(s.city || '')}</small></div>
-      <div class="fat"><b>${ifBrl(s.gmv)}</b><i style="width:${((s.gmv || 0) / maxG * 100).toFixed(1)}%"></i></div>
-      <div class="n">${ifNum(s.orders)}</div>
-      <div class="n">${ifBrl2(s.ticket)}</div>
-      <div class="cx ${ifCorCanc(canc)}">${ifPct(canc)}${cancN != null ? `<small>${ifNum(cancN)} canc.</small>` : ''}</div>
+      <div class="fat"><div class="fl"><b>${ifBrl(s.gmv)}</b>${b ? ifDv(s.gmv, b.gmv) : ''}</div><i style="width:${((s.gmv || 0) / maxG * 100).toFixed(1)}%"></i></div>
+      <div class="n">${ifNum(s.orders)}${b ? ifDv(s.orders, b.orders) : ''}</div>
+      <div class="n">${ifBrl2(s.ticket)}${b && bT ? ifDv(s.ticket, bT) : ''}</div>
+      <div class="cx ${ifCorCanc(canc)}">${ifPct(canc)}${cancN != null ? `<small>${ifNum(cancN)} canc.${b && b.cancel != null ? ' ' + ifDv(cancN, +b.cancel, true) : ''}</small>` : ''}</div>
       <div class="nota ${ifCorNota(s.rating)}">${ifNota(s.rating)}${s.reviews ? `<small>(${s.reviews})</small>` : ''}</div>
       <div>${ifSpark(s.trend)}</div>
     </div>`;
