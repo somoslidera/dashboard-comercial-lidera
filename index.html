@@ -772,7 +772,7 @@
   <footer>
     <span id="ifStatus">Carregando…</span>
     <span id="ifFonte">Dados do iFood</span>
-    <span>Atualiza 1x por dia, às 10h30</span>
+    <span>Atualiza 1x por dia, às 10h30 (2ª tentativa às 14h30)</span>
   </footer>
 </div>
 
@@ -2611,8 +2611,8 @@ document.querySelectorAll('.view-select').forEach((s) => {
 });
 if (location.pathname.replace(/\/+$/, '') === '/ifood') viewAtiva = 'ifood';   // link direto /ifood
 // O arquivo do iFood chega 1x por dia (rotina do Toqan às 10h; às 8h o iFood ainda não tinha fechado o dia anterior)
-// → a tela relê às 10h30 e, caso o envio atrase, de novo às 11h30, 12h30 e 13h30.
-const IF_HORARIOS = [[10, 30], [11, 30], [12, 30], [13, 30]];
+// e 2ª tentativa às 14h, se a das 10h não enviar) → a tela relê às 10h30 e de hora em hora até 15h30.
+const IF_HORARIOS = [[10, 30], [11, 30], [12, 30], [13, 30], [14, 30], [15, 30]];
 let ifAgendado = null;
 function agendarIfood() {
   const agora = new Date();
