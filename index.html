@@ -2622,7 +2622,7 @@ trocarView = function (v) {
   }
 };
 
-let ifDados = null, ifRecebido = null;
+let ifDados = null, ifRecebido = null, ifEnvios = [];
 let ifPer = (() => { try { return localStorage.getItem('ifPeriodo') || ''; } catch (e) { return ''; } })();
 const ifBrl = (v) => v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 const ifBrl2 = (v) => v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -2653,6 +2653,7 @@ async function carregarIfood() {
     if (j.erro) { mS('ifStatus', 'Não consegui ler os dados do iFood (' + j.erro + ')'); return; }
     ifDados = j.vazio ? null : j.dados;
     ifRecebido = j.recebido || null;
+    ifEnvios = j.envios || [];
   } catch (e) { mS('ifStatus', 'Sem conexão — tentando novamente…'); return; }
   renderIfood();
 }
@@ -2732,6 +2733,13 @@ function renderIfood() {
   st.textContent = ger
     ? 'Dados gerados em ' + ger.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' às ' + ger.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + (horas > 36 ? ' — desatualizado' : '')
     : 'Data de geração desconhecida';
+  // último envio do Toqan recusado (token errado, arquivo inválido…) → avisa no rodapé, em vermelho
+  const ult = (ifEnvios || []).find((e) => !e.teste);
+  if (ult && ult.status !== 200) {
+    const em = new Date(ult.em);
+    st.className = 'if-velho';
+    st.textContent += ` · último envio RECUSADO em ${em.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${em.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} (${ult.status} ${ult.detalhe || ult.erro || ''})`;
+  }
   const rec = ifRecebido && ifRecebido.em ? new Date(ifRecebido.em) : null;
   mS('ifFonte', 'Fonte: iFood' + (ifRecebido && ifRecebido.origem ? ' · enviado ' + (ifRecebido.origem === 'toqan' ? 'pelo Toqan' : 'pelo painel') : '')
     + (rec ? ' em ' + rec.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' às ' + rec.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''));

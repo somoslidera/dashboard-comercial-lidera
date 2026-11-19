@@ -58,32 +58,43 @@ function validar(d) {
   return null;
 }
 
+// registra CADA tentativa de envio (aceita ou recusada) — o plano da Vercel só guarda 1h de log,
+// então o histórico fica no Redis (últimas 30) e aparece na tela iFood (/api/ifood → envios).
+async function registrar(info) {
+  const linha = { em: new Date().toISOString(), ...info };
+  console.log('[ifood-receber]', JSON.stringify(linha));
+  try { await pipeline([['LPUSH', 'ifood:envios', JSON.stringify(linha)], ['LTRIM', 'ifood:envios', 0, 29]]); } catch { /* sem histórico, segue */ }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'POST') return res.status(405).json({ erro: 'use_post' });
+  const teste = String((req.query && req.query.teste) || '') === '1';
 
   const viaToken = tokenOk(req);
   const viaPainel = !viaToken && AUTH_ATIVO && autorizado(req);
-  if (!viaToken && !viaPainel) return res.status(401).json({ erro: 'nao_autorizado' });
+  const origem = viaToken ? 'toqan' : viaPainel ? 'painel' : 'desconhecida';
+  const recusar = async (status, corpo) => { await registrar({ status, origem, teste, erro: corpo.erro, detalhe: corpo.detalhe || null }); return res.status(status).json(corpo); };
   if (!R_URL || !R_TOKEN) return res.status(500).json({ erro: 'sem_redis' });
+  if (!viaToken && !viaPainel) return recusar(401, { erro: 'nao_autorizado', detalhe: req.headers.authorization || req.headers['x-ifood-token'] ? 'token_diferente' : 'sem_token' });
 
   const d = lerCorpo(req);
   const problema = validar(d);
-  if (problema) return res.status(400).json({ erro: 'arquivo_invalido', detalhe: problema });
+  if (problema) return recusar(400, { erro: 'arquivo_invalido', detalhe: problema });
 
   const texto = JSON.stringify(d);
-  if (Buffer.byteLength(texto) > MAX_BYTES) return res.status(413).json({ erro: 'arquivo_grande_demais' });
+  if (Buffer.byteLength(texto) > MAX_BYTES) return recusar(413, { erro: 'arquivo_grande_demais' });
 
-  const teste = String((req.query && req.query.teste) || '') === '1';
-  const recebido = JSON.stringify({ em: new Date().toISOString(), origem: viaToken ? 'toqan' : 'painel', gerado: d.generated_at || null });
+  const recebido = JSON.stringify({ em: new Date().toISOString(), origem, gerado: d.generated_at || null });
   try {
     if (teste) await pipeline([['SET', 'ifood:teste', texto, 'EX', 7 * 86400], ['SET', 'ifood:teste:recebido', recebido, 'EX', 7 * 86400]]);
     else await pipeline([['SET', 'ifood:data', texto], ['SET', 'ifood:recebido', recebido]]);
   } catch (e) {
-    return res.status(502).json({ erro: 'falha_ao_gravar', detalhe: String(e.message || e) });
+    return recusar(502, { erro: 'falha_ao_gravar', detalhe: String(e.message || e) });
   }
 
   const p0 = d.periods[d.default] || d.periods[d.order[0]];
+  await registrar({ status: 200, origem, teste, gerado: d.generated_at || null, lojas: (p0 && p0.stores && p0.stores.length) || 0 });
   return res.status(200).json({
     ok: true,
     teste,
