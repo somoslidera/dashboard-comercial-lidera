@@ -3,7 +3,8 @@
 // Mesma conta do Dashboard do Flow:
 //   faturamento = soma dos lançamentos de RECEITA do mês (categorias[grupo].tipo === 'receita')
 //   metas       = fin.metasFat[ano].meses['AAAA-MM'] = { minimo, realista, desafiador }
-//   dias úteis  = fin.diasTrabalho (0=dom … 6=sáb; padrão seg–sáb)
+//   dias úteis  = fin.diasTrabalho (0=dom … 6=sáb; padrão seg–sáb), MENOS os feriados em que o restaurante fecha
+//                 (fin.feriados, igual ao Flow desde 06/11/2026 — ver feriadosFechados)
 //   projeção    = faturamento ÷ dias de funcionamento decorridos × dias de funcionamento do mês
 // Diferença deliberada: os "dias decorridos" contam até o ÚLTIMO lançamento de receita (não até hoje),
 // p/ que lançamento atrasado não derrube a projeção e jogue o cliente em "crítico" sem motivo.
@@ -23,10 +24,45 @@ export const FAIXAS = {
 };
 
 const isoDia = (d) => d.toISOString().slice(0, 10);
-function diasTrabEntre(de, ate, ds) {
+
+// ── FERIADOS — cópia da regra do Flow (Parâmetros › Metas de faturamento) ──
+// fin.feriados = { abre:false, extras:[{data,nome}], excecoes:{'AAAA-MM-DD':true|false}, ocultos:['AAAA-MM-DD'] }
+// Nacionais (fixos + móveis pela Páscoa), menos os "ocultos", mais os "extras" (municipais etc.).
+// Cada feriado abre ou fecha conforme `abre` (padrão: fecha), com exceção por data. Feriado FECHADO não é dia de funcionamento.
+function pascoa(ano) {
+  const a = ano % 19, b = Math.floor(ano / 100), c = ano % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25),
+    g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4,
+    l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451),
+    mes = Math.floor((h + l - 7 * m + 114) / 31), dia = ((h + l - 7 * m + 114) % 31) + 1;
+  return Date.UTC(ano, mes - 1, dia, 12);
+}
+const FER_FIXOS = ['01-01', '04-21', '05-01', '09-07', '10-12', '11-02', '11-15', '11-20', '12-25'];
+const FER_MOVEIS = [-48, -47, -2, 60];          // carnaval (seg e ter), sexta-feira santa, corpus christi
+export function feriadosFechados(cfg, anos) {
+  const f = cfg && typeof cfg === 'object' && !Array.isArray(cfg) ? cfg : {};
+  const ocultos = Array.isArray(f.ocultos) ? f.ocultos : [];
+  const excecoes = f.excecoes && typeof f.excecoes === 'object' ? f.excecoes : {};
+  const extras = Array.isArray(f.extras) ? f.extras : [];
+  const fechados = new Set();
+  for (const ano of anos) {
+    const p = pascoa(ano);
+    const nac = FER_FIXOS.map((md) => `${ano}-${md}`).concat(FER_MOVEIS.map((n) => isoDia(new Date(p + n * 86400000))))
+      .filter((d) => !ocultos.includes(d));
+    const ext = extras.map((x) => x && x.data).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d || '') && +d.slice(0, 4) === ano);
+    for (const d of new Set(nac.concat(ext))) {
+      const abre = d in excecoes ? !!excecoes[d] : !!f.abre;
+      if (!abre) fechados.add(d);
+    }
+  }
+  return fechados;
+}
+
+// dias de funcionamento entre duas datas: dia da semana marcado E não é feriado fechado
+function diasTrabEntre(de, ate, ds, fer) {
   if (!de || !ate || ate < de) return 0;
   let n = 0;
-  for (let d = new Date(de + 'T12:00:00Z'); isoDia(d) <= ate; d = new Date(d.getTime() + 86400000)) if (ds.includes(d.getUTCDay())) n++;
+  for (let d = new Date(de + 'T12:00:00Z'); isoDia(d) <= ate; d = new Date(d.getTime() + 86400000))
+    if (ds.includes(d.getUTCDay()) && !(fer && fer.has(isoDia(d)))) n++;
   return n;
 }
 const num = (v) => { const n = typeof v === 'string' ? parseFloat(v.replace(',', '.')) : +v; return isFinite(n) ? n : 0; };
@@ -97,6 +133,7 @@ export function analisarCliente(org, { mes, hoje }) {
   const [y, m] = mes.split('-').map(Number);
   const ini = `${mes}-01`, fim = `${mes}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}`;
   const ds = Array.isArray(org.diasTrab) && org.diasTrab.length ? org.diasTrab.map(Number) : DIAS_PADRAO;
+  const fer = feriadosFechados(org.feriados, [y]);
   const tipos = org.catTipos || {};
   const receitas = (org.lanc || []).filter((l) => l.data >= ini && l.data <= fim && l.data <= hoje && tipos[l.grupo] === 'receita');
   const faturado = receitas.reduce((s, l) => s + num(l.valor), 0);
@@ -105,12 +142,12 @@ export function analisarCliente(org, { mes, hoje }) {
   const metas = { minimo: num(mt.minimo), realista: num(mt.realista), desafiador: num(mt.desafiador) };
   const temMeta = metas.minimo > 0 || metas.realista > 0 || metas.desafiador > 0;
 
-  const diasMes = diasTrabEntre(ini, fim, ds);
+  const diasMes = diasTrabEntre(ini, fim, ds, fer);
   const fechado = hoje > fim;
   const ateHoje = fechado ? fim : hoje;
   const ateLanc = ultimo || ini;
-  const decorrHoje = diasTrabEntre(ini, ateHoje, ds);
-  const decorr = fechado ? diasMes : diasTrabEntre(ini, ateLanc, ds);
+  const decorrHoje = diasTrabEntre(ini, ateHoje, ds, fer);
+  const decorr = fechado ? diasMes : diasTrabEntre(ini, ateLanc, ds, fer);
   const ritmo = decorr > 0 ? faturado / decorr : 0;
   const projecao = fechado ? faturado : ritmo * diasMes;
   const atrasoDias = ultimo ? Math.max(0, decorrHoje - decorr) : null;   // dias de funcionamento sem receita lançada
@@ -118,7 +155,8 @@ export function analisarCliente(org, { mes, hoje }) {
   const base = {
     id: org.id, nome: org.nome || '—', consultor: org.consultor || null,
     faturado, projecao, ritmo, ultimoLancamento: ultimo || null, atrasoDias,
-    diasMes, diasDecorridos: decorr, metas, fechado,
+    diasMes, diasDecorridos: decorr, feriadosNoMes: [...fer].filter((d) => d >= ini && d <= fim && ds.includes(new Date(d + 'T12:00:00Z').getUTCDay())).sort(),
+    metas, fechado,
     resultado: resultadoDoMes(org, ini, fim),
     compras: comprasDoCliente(org, { mesIni: ini, mesFim: fim, hoje })
   };
@@ -149,6 +187,7 @@ const SQL = `
 select o.id, o.nome, p.nome as consultor,
   o.dados->'fin'->'metasFat'->$1::text->'meses'->$2::text as metas,
   o.dados->'fin'->'diasTrabalho' as dias_trab,
+  o.dados->'fin'->'feriados' as feriados,
   case when jsonb_typeof(o.dados->'categorias') = 'object'
     then (select jsonb_object_agg(k, v->'tipo') from jsonb_each(o.dados->'categorias') c(k, v)) end as cat_tipos,
   (select coalesce(jsonb_agg(jsonb_build_object('data', l->>'data', 'grupo', l->>'grupo', 'valor', l->'valor',
@@ -211,7 +250,7 @@ export default async function handler(req, res) {
   }
 
   const clientes = linhas.filter((r) => !oculto(r.nome, r.id)).map((r) => analisarCliente({
-    id: r.id, nome: r.nome, consultor: r.consultor, metas: r.metas, diasTrab: r.dias_trab, catTipos: r.cat_tipos, lanc: r.lanc,
+    id: r.id, nome: r.nome, consultor: r.consultor, metas: r.metas, diasTrab: r.dias_trab, feriados: r.feriados, catTipos: r.cat_tipos, lanc: r.lanc,
     contasAbertas: r.contas_abertas, meios: r.meios, receitaBruta: r.receita_bruta, cmvAlvo: r.cmv_alvo
   }, { mes, hoje }));
 
