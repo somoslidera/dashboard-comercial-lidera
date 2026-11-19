@@ -2636,6 +2636,8 @@ const ifCorCanc = (v) => v == null ? '' : v <= 3 ? 'ok' : v <= 6 ? 'mid' : 'bad'
 const ifCorNota = (v) => v == null ? '' : v >= 4.5 ? 'ok' : v >= 4 ? 'mid' : 'bad';
 const ifVar = (v) => v == null || !isFinite(v) ? '' :
   `<span class="if-var ${v > 0.05 ? 'up' : v < -0.05 ? 'dn' : ''}">${v > 0 ? '▲' : v < 0 ? '▼' : '='} ${Math.abs(v).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span>`;
+const ifVarInv = (v) => v == null || !isFinite(v) ? '' :
+  `<span class="if-var ${v > 0.05 ? 'dn' : v < -0.05 ? 'up' : ''}">${v > 0 ? '▲' : v < 0 ? '▼' : '='} ${Math.abs(v).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span>`;
 const ifDia = (d) => d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '';
 const ifSem = (d) => ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][new Date(d + 'T12:00:00').getDay()];
 
@@ -2664,20 +2666,21 @@ async function carregarIfood() {
 let ifLoja = (() => { try { return localStorage.getItem('ifLoja') || ''; } catch (e) { return ''; } })();
 const ifSomaDias = (dia, n) => { const t = new Date(dia + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
 
-// faturamento e pedidos por dia (da rede, ou de uma loja), juntando todos os períodos do arquivo
+// faturamento, pedidos e cancelamentos por dia (da rede, ou de uma loja), juntando todos os períodos do arquivo
+// (cancelamentos só se o Toqan mandar daily_cancel, no mesmo formato de daily_gmv)
 function ifSerie(d, lojaId) {
   const m = new Map();
   Object.values(d.periods || {}).forEach((q) => {
     const o = lojaId ? (q.stores || []).find((s) => s.id === lojaId) : q.network;
     const dias = q.days || [];
     if (!o || !o.daily_gmv || o.daily_gmv.length !== dias.length) return;
-    dias.forEach((dia, i) => { if (!m.has(dia)) m.set(dia, { gmv: +o.daily_gmv[i] || 0, orders: o.daily_orders ? +o.daily_orders[i] || 0 : null }); });
+    dias.forEach((dia, i) => { if (!m.has(dia)) m.set(dia, { gmv: +o.daily_gmv[i] || 0, orders: o.daily_orders ? +o.daily_orders[i] || 0 : null, cancel: Array.isArray(o.daily_cancel) && o.daily_cancel.length === dias.length ? +o.daily_cancel[i] || 0 : null }); });
   });
   return m;
 }
 
-// período anterior equivalente: Ontem → mesmo dia da semana passada; 7 dias → 7 dias antes;
-// mês → mesmos dias do mês anterior. Só compara se TODOS os dias de base estiverem no arquivo.
+// período anterior equivalente: Ontem → mesmo dia da semana passada; Últimos 7 dias → os 7 dias antes deles
+// (do 14º ao 8º dia atrás); Este mês → mesmos dias do mês anterior. Só compara se TODOS os dias de base estiverem no arquivo.
 function ifBaseComparacao(P, serie) {
   const dias = P.days || [];
   if (!dias.length) return null;
@@ -2699,8 +2702,12 @@ function ifBaseComparacao(P, serie) {
     label = `vs ${dias.length} dias anteriores`;
   }
   if (!base.length || !base.every((x) => serie.has(x))) return null;
-  const tot = base.reduce((a, x) => { const s = serie.get(x); a.gmv += s.gmv; a.orders += s.orders || 0; return a; }, { gmv: 0, orders: 0 });
-  return { ...tot, label };
+  const tot = base.reduce((a, x) => {
+    const s = serie.get(x); a.gmv += s.gmv; a.orders += s.orders || 0;
+    a.cancel = a.cancel == null || s.cancel == null ? null : a.cancel + s.cancel;
+    return a;
+  }, { gmv: 0, orders: 0, cancel: 0 });
+  return { ...tot, label: `${label} (${ifDia(base[0])} a ${ifDia(base[base.length - 1])})` };
 }
 
 function renderIfood() {
@@ -2765,16 +2772,29 @@ function renderIfood() {
 
   const N = L || P.network;
   const serie = ifSerie(d, L ? L.id : null);
-  // comparação: rede usa a do Toqan; "Ontem" e loja usam as séries diárias do próprio arquivo
-  let C = L ? {} : (P.compare || {});
-  if (ontem || L) {
-    const base = ifBaseComparacao(P, serie);
-    if (base && base.gmv > 0) {
-      const v = (a, b) => (a == null || !b) ? null : (a / b - 1) * 100;
-      C = { label: base.label, gmv: v(N.gmv, base.gmv), orders: v(N.orders, base.orders), ticket: v(N.ticket, base.orders ? base.gmv / base.orders : null) };
-    } else if (base) C = { label: base.label.replace(/: R\$\s?0\)$/, ')') + ' — não houve venda' };
-    else if (L) C = { label: 'sem período anterior no arquivo para comparar' };
-  }
+  // comparação com o período anterior equivalente (ver ifBaseComparacao):
+  //   1º o bloco "previous" do arquivo, se o Toqan mandar (traz também o cancelamento);
+  //   2º as séries diárias do próprio arquivo;  3º o "compare" pronto do Toqan (só rede).
+  let base = null;
+  const pv = P.previous && (L ? (P.previous.stores || []).find((s) => s.id === L.id) : P.previous.network);
+  if (pv) base = { gmv: +pv.gmv || 0, orders: pv.orders, cancel: pv.cancel, cancel_pct: pv.cancel_pct,
+    label: P.previous.label || (P.previous.start ? `vs ${ifDia(P.previous.start)}${P.previous.end && P.previous.end !== P.previous.start ? ' a ' + ifDia(P.previous.end) : ''}` : 'vs período anterior') };
+  else base = ifBaseComparacao(P, serie);
+  let C = {};
+  const v = (a, b) => (a == null || b == null || !b) ? null : (a / b - 1) * 100;
+  if (base && base.gmv > 0) C = { label: base.label, gmv: v(N.gmv, base.gmv), orders: v(N.orders, base.orders), ticket: v(N.ticket, base.orders ? base.gmv / base.orders : null) };
+  else if (base) C = { label: base.label.replace(/: R\$\s?0\)$/, ')') + ' — não houve venda' };
+  else if (!L && P.compare) C = P.compare;
+  else C = { label: 'sem período anterior no arquivo para comparar' };
+  // cancelamento do período anterior (só se o arquivo trouxer: previous ou daily_cancel)
+  const bCanc = base && base.cancel != null ? +base.cancel : null;
+  const bPct = bCanc == null ? null : base.cancel_pct != null ? +base.cancel_pct
+    : (() => { // mesma conta que o arquivo usa: cancelados ÷ pedidos, ou ÷ (pedidos + cancelados)
+      const den1 = base.orders, den2 = (base.orders || 0) + bCanc;
+      const usaSoma = N.cancel != null && N.orders ? Math.abs(N.cancel / (N.orders + N.cancel) * 100 - N.cancel_pct) < Math.abs(N.cancel / N.orders * 100 - N.cancel_pct) : true;
+      const den = usaSoma ? den2 : den1;
+      return den ? bCanc / den * 100 : null;
+    })();
   const cmp = C.label ? `<span>${clEsc(C.label)}</span>` : '';
   // cancelamento segue o filtro (em "Ontem" é só o dia de ontem, não os 7 dias)
   const cancPct = N.cancel_pct;
@@ -2787,7 +2807,7 @@ function renderIfood() {
     ['💰', L ? 'Faturamento da loja' : 'Faturamento da rede', ifBrl(N.gmv), `${ifVar(C.gmv)}${cmp}`, true],
     ['🧾', 'Pedidos', ifNum(N.orders), `${ifVar(C.orders)}<span>${L ? `${posL}º de ${lojas.length} lojas em faturamento` : `${ativas} de ${lojas.length} lojas venderam`}</span>`],
     ['🎟️', 'Ticket médio', ifBrl2(N.ticket), `${ifVar(C.ticket)}${tk7 != null ? `<span>7 dias: ${ifBrl2(tk7)}</span>` : ''}`],
-    ['✖️', 'Cancelamento', `<span class="${ifCorCanc(cancPct)}">${ifPct(cancPct)}</span>`, `<span>${ifNum(cancQtd)} ${cancQtd === 1 ? 'pedido cancelado' : 'pedidos cancelados'}</span>`],
+    ['✖️', 'Cancelamento', `<span class="${ifCorCanc(cancPct)}">${ifPct(cancPct)}</span>`, `${bCanc != null ? ifVarInv(v(cancQtd, bCanc)) : ''}<span>${ifNum(cancQtd)} ${cancQtd === 1 ? 'pedido cancelado' : 'pedidos cancelados'}${bCanc != null ? ` · antes ${ifNum(bCanc)}${bPct != null ? ' (' + ifPct(bPct) + ')' : ''}` : ''}</span>`],
     ['⭐', 'Avaliação média', `<span class="${ifCorNota(N.rating)}">${ifNota(N.rating)}</span>`, `<span>${ifNum(N.reviews || 0)} avaliações no período</span>`]
   ].map(([ic, t, v, s, dest]) => `<div class="card if-kpi${dest ? ' dest' : ''}"><div class="t"><span>${ic}</span>${t}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
 
