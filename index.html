@@ -767,7 +767,7 @@
   <footer>
     <span id="ifStatus">Carregando…</span>
     <span id="ifFonte">Dados do iFood</span>
-    <span>Atualiza 1x por dia, às 8h30</span>
+    <span>Atualiza 1x por dia, às 10h30</span>
   </footer>
 </div>
 
@@ -2605,12 +2605,15 @@ document.querySelectorAll('.view-select').forEach((s) => {
   s.value = viewAtiva;
 });
 if (location.pathname.replace(/\/+$/, '') === '/ifood') viewAtiva = 'ifood';   // link direto /ifood
-// O arquivo do iFood chega 1x por dia (rotina do Toqan às 8h) → a tela relê 1x por dia, às 8h30.
+// O arquivo do iFood chega 1x por dia (rotina do Toqan às 10h; às 8h o iFood ainda não tinha fechado o dia anterior)
+// → a tela relê às 10h30 e, caso o envio atrase, de novo às 11h30, 12h30 e 13h30.
+const IF_HORARIOS = [[10, 30], [11, 30], [12, 30], [13, 30]];
 let ifAgendado = null;
 function agendarIfood() {
-  const agora = new Date(), alvo = new Date(agora);
-  alvo.setHours(8, 30, 0, 0);
-  if (alvo <= agora) alvo.setDate(alvo.getDate() + 1);
+  const agora = new Date();
+  const alvos = IF_HORARIOS.map(([h, m]) => { const a = new Date(agora); a.setHours(h, m, 0, 0); return a; });
+  let alvo = alvos.find((a) => a > agora);
+  if (!alvo) { alvo = alvos[0]; alvo.setDate(alvo.getDate() + 1); }
   ifAgendado = setTimeout(() => { if (viewAtiva === 'ifood') carregarIfood(); agendarIfood(); }, alvo - agora);
 }
 const trocarViewAntesIfood = trocarView;
@@ -2848,7 +2851,7 @@ function renderIfood() {
   const maxM = Math.max(1, ...mot.map((m) => m.count || 0));
   mS('ifMotTag', (L ? (P.label || '') : (P.reasons_note || P.label || '')).toUpperCase());
   document.getElementById('ifMotivos').innerHTML = mot.length ? mot.slice(0, 6).map((m) => `<div class="if-mot">
-      <div class="l"><span title="${clEsc(m.reason)}">${clEsc(m.reason)}</span><b>${ifNum(m.count)}</b></div>
+      <div class="l"><span title="${clEsc(m.reason || 'Sem motivo informado')}">${clEsc(m.reason || 'Sem motivo informado')}</span><b>${ifNum(m.count)}</b></div>
       <i style="width:${((m.count || 0) / maxM * 100).toFixed(1)}%"></i></div>`).join('')
     : '<div class="if-vazio">Nenhum cancelamento 🎉</div>';
 }
