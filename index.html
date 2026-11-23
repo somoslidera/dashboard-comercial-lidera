@@ -349,6 +349,9 @@
   .cl-compras{flex:1 1 0;min-height:0;display:flex;flex-direction:column;padding:clamp(10px,1.3vh,14px) clamp(12px,1.2vw,18px)}
   .cl-compras h2{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(14px,2vh,20px);display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:clamp(8px,1.1vh,12px)}
   .cl-compras h2 .tag{font-family:'Figtree',sans-serif;font-size:clamp(8px,1vh,11px);font-weight:800;color:var(--gold-soft);background:rgba(203,167,94,.12);padding:3px 9px;border-radius:100px;letter-spacing:.08em}
+  .cl-compras h2 .cp-sem{font-size:clamp(10px,1.25vh,13px);padding:.4em 2.2em .4em .9em;border-radius:8px;
+    background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23CBA75E'/%3E%3C/svg%3E") no-repeat right .8em center}
+  .cl-compras h2 .cp-sem.passada{border-color:var(--gold)}
   .cl-compras h2 .exp{font-family:'Figtree',sans-serif;font-size:clamp(9px,1.1vh,12px);font-weight:600;color:var(--text-3)}
   .cl-compras h2 .chips{margin-left:auto;display:flex;gap:8px;font-family:'Figtree',sans-serif;font-size:clamp(10px,1.25vh,13px);font-weight:700}
   .cl-chip{padding:3px 10px;border-radius:100px;border:1px solid var(--line-strong);color:var(--text-2)}
@@ -2466,12 +2469,31 @@ let clMesSel = '';
   sel.addEventListener('change', () => { clMesSel = sel.value; carregarClientes(); });
 })();
 
+// filtro de semana das COMPRAS ('' = semana atual; senão o sábado que abre a semana sáb–sex). Não mexe nas metas de faturamento.
+let clSemSel = '';
+const clIso = (d) => d.toISOString().slice(0, 10);
+function clSemanasOpcoes(qtd) {
+  const hoje = new Date(Date.now() - 3 * 3600 * 1000); hoje.setUTCHours(12, 0, 0, 0);
+  const sab = new Date(hoje.getTime() - ((hoje.getUTCDay() + 1) % 7) * 864e5);   // sábado que abre a semana atual
+  return Array.from({ length: qtd }, (_, k) => {
+    const ini = new Date(sab.getTime() - k * 7 * 864e5), fim = new Date(ini.getTime() + 6 * 864e5);
+    return { v: k ? clIso(ini) : '', t: `${clDDMM(clIso(ini))} → ${clDDMM(clIso(fim))}${k === 0 ? ' (atual)' : k === 1 ? ' (passada)' : ''}` };
+  });
+}
+document.getElementById('clCompras').addEventListener('change', (e) => {
+  if (!e.target.classList.contains('cp-sem')) return;
+  clSemSel = e.target.value;
+  e.target.disabled = true;
+  carregarClientes();
+});
+
 let clSeq = 0;
 async function carregarClientes() {
   const meu = ++clSeq;
   let j;
   try {
-    const r = await fetch('/api/clientes' + (clMesSel ? '?mes=' + clMesSel : ''), { cache: 'no-store' });
+    const qs = [clMesSel ? 'mes=' + clMesSel : '', clSemSel ? 'semana=' + clSemSel : ''].filter(Boolean).join('&');
+    const r = await fetch('/api/clientes' + (qs ? '?' + qs : ''), { cache: 'no-store' });
     if (r.status === 401) { location.href = '/login.html?volta=/clientes'; return; }
     j = await r.json();
   } catch (e) { mS('clStatus', 'Sem conexão — tentando novamente…'); return; }
@@ -2582,19 +2604,22 @@ function renderCompras(j) {
       <div class="top"><span class="nm" title="${clEsc(c.nome)}">${clEsc(c.nome)}</span><span class="uso" title="comprado ÷ meta de compra da semana">${clPct(p.usoPct)}</span></div>
       <div class="cbar"><i style="width:${Math.min(100, p.usoPct || 0).toFixed(1)}%"></i></div>
       <div class="linha"><span>Comprou <b>${clBrl(p.comprado)}</b> de <b>${clBrl(p.meta)}</b></span>
-        <span>${p.saldo >= 0 ? `pode comprar <b class="pos">${clBrl(p.saldo)}</b>` : `passou <b class="neg">${clBrl(-p.saldo)}</b>`}</span></div>
+        <span>${p.saldo >= 0 ? `${atual ? 'pode comprar' : 'ficou abaixo'} <b class="pos">${clBrl(p.saldo)}</b>` : `passou <b class="neg">${clBrl(-p.saldo)}</b>`}</span></div>
       <div class="linha">${cmv}<span>alvo ${clPct(p.alvo)}</span></div>
-      <div class="linha"><span title="vendas da semana anterior, base da meta">Vendeu na semana passada ${clBrl(p.vendasBase)}</span></div>
+      <div class="linha"><span title="vendas da semana anterior, base da meta">Vendeu de ${clDDMM(S.baseIni)} a ${clDDMM(S.baseFim)}: ${clBrl(p.vendasBase)}</span></div>
     </div>`;
   };
 
   const el = document.getElementById('clCompras');
-  el.innerHTML = `<h2>🛒 Compras da semana <span class="tag">${clDDMM(S.ini)} → ${clDDMM(S.fim)}</span>
+  const atual = S.atual !== false;
+  const sel = `<select class="mes-filtro cp-sem${atual ? '' : ' passada'}" aria-label="Semana das compras">${clSemanasOpcoes(12)
+    .map((o) => `<option value="${o.v}"${o.v === clSemSel ? ' selected' : ''}>${o.t}</option>`).join('')}</select>`;
+  el.innerHTML = `<h2>🛒 Compras da semana ${sel}${atual ? '' : '<span class="tag">SEMANA FECHADA</span>'}
       <span class="exp">meta = vendido de ${clDDMM(S.baseIni)} a ${clDDMM(S.baseFim)} × CMV alvo de cada cliente</span>
       <span class="chips">${['estourou', 'limite', 'dentro'].map((s) => `<span class="cl-chip" style="--cor:${CP_COR[s]}"><b>${conta(s)}</b> ${CP_NOME[s]}</span>`).join('')}</span></h2>
-    <div class="cl-cgrid">${com.length ? com.map(card).join('') : '<div class="cl-vazio">Nenhum cliente com venda na semana passada</div>'}</div>
-    <div class="cl-cfoot">${semBase.length ? `<b>Comprou sem ter venda lançada na semana passada (sem meta de compra):</b> ${semBase.map((c) => `${clEsc(c.nome)} (${clBrl(c.compras.comprado)})`).join(' · ')}<br>` : ''}`
-      + `${nada.length} cliente(s) sem venda na semana passada e sem compra nesta semana.</div>`;
+    <div class="cl-cgrid">${com.length ? com.map(card).join('') : '<div class="cl-vazio">Nenhum cliente com venda na semana anterior</div>'}</div>
+    <div class="cl-cfoot">${semBase.length ? `<b>Comprou sem ter venda lançada na semana anterior (sem meta de compra):</b> ${semBase.map((c) => `${clEsc(c.nome)} (${clBrl(c.compras.comprado)})`).join(' · ')}<br>` : ''}`
+      + `${nada.length} cliente(s) sem venda na semana anterior e sem compra ${atual ? 'nesta' : 'nessa'} semana.</div>`;
 }
 
 /* ═══════════════════════════════════════════════════════════

@@ -10,6 +10,7 @@
 // p/ que lançamento atrasado não derrube a projeção e jogue o cliente em "crítico" sem motivo.
 //   /api/clientes            → mês atual
 //   /api/clientes?mes=AAAA-MM → outro mês (mês fechado: projeção = faturado)
+//   &semana=AAAA-MM-DD        → compras de outra semana (sáb–sex que contém essa data); não mexe nas metas de faturamento
 import pg from 'pg';
 import { autorizado } from './_auth.js';
 
@@ -129,7 +130,7 @@ export function comprasDoCliente(org, { mesIni, mesFim, hoje }) {
 }
 
 // classifica UM cliente. org ={ id, nome, consultor, metas, diasTrab, catTipos, lanc, contasAbertas, meios, receitaBruta }
-export function analisarCliente(org, { mes, hoje }) {
+export function analisarCliente(org, { mes, hoje, hojeCompras }) {
   const [y, m] = mes.split('-').map(Number);
   const ini = `${mes}-01`, fim = `${mes}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}`;
   const ds = Array.isArray(org.diasTrab) && org.diasTrab.length ? org.diasTrab.map(Number) : DIAS_PADRAO;
@@ -158,7 +159,7 @@ export function analisarCliente(org, { mes, hoje }) {
     diasMes, diasDecorridos: decorr, feriadosNoMes: [...fer].filter((d) => d >= ini && d <= fim && ds.includes(new Date(d + 'T12:00:00Z').getUTCDay())).sort(),
     metas, fechado,
     resultado: resultadoDoMes(org, ini, fim),
-    compras: comprasDoCliente(org, { mesIni: ini, mesFim: fim, hoje })
+    compras: comprasDoCliente(org, { mesIni: ini, mesFim: fim, hoje: hojeCompras || hoje })
   };
   if (!temMeta) return { ...base, faixa: 'semMeta' };
   if (!receitas.length) return { ...base, faixa: 'semLancamento' };
@@ -238,11 +239,15 @@ export default async function handler(req, res) {
   const mes = /^\d{4}-\d{2}$/.test(q.mes || '') ? q.mes : hoje.slice(0, 7);
   const [y, m] = mes.split('-').map(Number);
   const fim = `${mes}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}`;
+  // semana das compras: a atual, ou a escolhida no filtro (semana já fechada → conta até a sexta dela)
+  const semReq = /^\d{4}-\d{2}-\d{2}$/.test(q.semana || '') && q.semana <= hoje ? q.semana : hoje;
+  const sFim = semanas(semReq).fim;
+  const hojeCompras = sFim < hoje ? sFim : hoje;
 
   let linhas;
   try {
-    // lançamentos: o mês escolhido + a semana anterior à atual (base da meta de compra), que pode cair em outro mês
-    const S = semanas(hoje);
+    // lançamentos: o mês escolhido + a semana das compras e a anterior a ela (base da meta), que podem cair em outro mês
+    const S = semanas(hojeCompras);
     const jIni = [`${mes}-01`, S.antIni].sort()[0], jFim = [fim, S.fim].sort()[1];
     linhas = (await abrir().query(SQL, [mes.slice(0, 4), mes, jIni, jFim, `${mes}-01`, fim])).rows;
   } catch (e) {
@@ -252,9 +257,9 @@ export default async function handler(req, res) {
   const clientes = linhas.filter((r) => !oculto(r.nome, r.id)).map((r) => analisarCliente({
     id: r.id, nome: r.nome, consultor: r.consultor, metas: r.metas, diasTrab: r.dias_trab, feriados: r.feriados, catTipos: r.cat_tipos, lanc: r.lanc,
     contasAbertas: r.contas_abertas, meios: r.meios, receitaBruta: r.receita_bruta, cmvAlvo: r.cmv_alvo
-  }, { mes, hoje }));
+  }, { mes, hoje, hojeCompras }));
 
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=600');
-  const S = semanas(hoje);
-  return res.status(200).json({ mes, hoje, semana: { ini: S.ini, fim: S.fim, baseIni: S.antIni, baseFim: S.antFim }, faixas: FAIXAS, clientes, atualizadoEm: new Date().toISOString() });
+  const S = semanas(hojeCompras);
+  return res.status(200).json({ mes, hoje, semana: { ini: S.ini, fim: S.fim, baseIni: S.antIni, baseFim: S.antFim, atual: hojeCompras === hoje }, faixas: FAIXAS, clientes, atualizadoEm: new Date().toISOString() });
 }
