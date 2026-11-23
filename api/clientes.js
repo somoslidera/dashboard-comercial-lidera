@@ -10,7 +10,7 @@
 // p/ que lançamento atrasado não derrube a projeção e jogue o cliente em "crítico" sem motivo.
 //   /api/clientes            → mês atual
 //   /api/clientes?mes=AAAA-MM → outro mês (mês fechado: projeção = faturado)
-//   &semana=AAAA-MM-DD        → compras de outra semana (sáb–sex que contém essa data); não mexe nas metas de faturamento
+//   &semana=AAAA-MM-DD        → compras de outra semana (ter–seg que contém essa data); não mexe nas metas de faturamento
 import pg from 'pg';
 import { autorizado } from './_auth.js';
 
@@ -93,18 +93,19 @@ export function resultadoDoMes(org, ini, fim) {
   return { receitas: rec, despesas, valor, pct: rec > 0 ? valor / rec * 100 : null, temLancamento: ls.length > 0 || contas > 0 };
 }
 
-// semana de compras: SÁBADO a SEXTA (pedido de 18/11/2026: o escritório não trabalha sáb/dom, então a
-// semana fecha na sexta e a equipe já acompanha a semana nova na segunda). Base da meta = sáb–sex anterior.
+// semana de compras: TERÇA a SEGUNDA (pedido de 23/11/2026; antes, de 18/11 a 23/11, foi sábado a sexta).
+// A semana fecha na segunda, já com as vendas e compras do fim de semana. Base da meta = ter–seg anterior.
+// (a função e os campos mantêm o nome antigo "sab": é o 1º dia da semana)
 export function semanas(hoje) {
   const d = new Date(hoje + 'T12:00:00Z');
-  const sab = new Date(d.getTime() - ((d.getUTCDay() + 1) % 7) * 86400000);   // sáb=0, dom=1 … sex=6
+  const sab = new Date(d.getTime() - ((d.getUTCDay() + 5) % 7) * 86400000);   // ter=0, qua=1 … seg=6
   const mais = (x, n) => isoDia(new Date(x.getTime() + n * 86400000));
   return { ini: isoDia(sab), fim: mais(sab, 6), antIni: mais(sab, -7), antFim: mais(sab, -1) };
 }
 
 // CMV LANÇADO do mês = igual ao Flow (cmvLancPeriodo): lançamentos do grupo "CMV" ÷ receitas do mês.
-// META DE COMPRA da semana = regra do comercial: vendido na semana anterior (sáb–sex) × CMV alvo.
-//   Fica fixa a semana inteira (muda todo sábado). Comprado = lançamentos "CMV" de sábado até hoje.
+// META DE COMPRA da semana = regra do comercial: vendido na semana anterior (ter–seg) × CMV alvo.
+//   Fica fixa a semana inteira (muda toda terça). Comprado = lançamentos "CMV" de terça até hoje.
 export function comprasDoCliente(org, { mesIni, mesFim, hoje }) {
   const tipos = org.catTipos || {};
   const ls = org.lanc || [];

@@ -2469,12 +2469,12 @@ let clMesSel = '';
   sel.addEventListener('change', () => { clMesSel = sel.value; carregarClientes(); });
 })();
 
-// filtro de semana das COMPRAS ('' = semana atual; senão o sábado que abre a semana sáb–sex). Não mexe nas metas de faturamento.
+// filtro de semana das COMPRAS ('' = semana atual; senão a terça que abre a semana ter–seg). Não mexe nas metas de faturamento.
 let clSemSel = '';
 const clIso = (d) => d.toISOString().slice(0, 10);
 function clSemanasOpcoes(qtd) {
   const hoje = new Date(Date.now() - 3 * 3600 * 1000); hoje.setUTCHours(12, 0, 0, 0);
-  const sab = new Date(hoje.getTime() - ((hoje.getUTCDay() + 1) % 7) * 864e5);   // sábado que abre a semana atual
+  const sab = new Date(hoje.getTime() - ((hoje.getUTCDay() + 5) % 7) * 864e5);   // terça que abre a semana atual
   return Array.from({ length: qtd }, (_, k) => {
     const ini = new Date(sab.getTime() - k * 7 * 864e5), fim = new Date(ini.getTime() + 6 * 864e5);
     return { v: k ? clIso(ini) : '', t: `${clDDMM(clIso(ini))} → ${clDDMM(clIso(fim))}${k === 0 ? ' (atual)' : k === 1 ? ' (passada)' : ''}` };
@@ -2581,7 +2581,7 @@ function renderClientes(j) {
   mS('clStatus', 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' · ' + j.clientes.length + ' clientes no Flow');
 }
 
-// ── Compras da semana: meta = vendido na semana anterior × CMV alvo (fixa de sábado a sexta) ──
+// ── Compras da semana: meta = vendido na semana anterior × CMV alvo (fixa de terça a segunda) ──
 const CP_COR = { estourou: 'var(--c-critico)', limite: 'var(--c-atencao)', dentro: 'var(--c-supernova)' };
 const CP_NOME = { estourou: 'passaram da meta', limite: 'perto do limite (≥ 85%)', dentro: 'dentro da meta' };
 function renderCompras(j) {
