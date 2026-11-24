@@ -339,7 +339,14 @@
   .cl-cli .acao{font-size:clamp(9px,1.15vh,12px);color:var(--text-2)}
   .cl-cli .acao b{color:var(--cor)}
   .cl-selo{display:inline-block;font-size:clamp(7px,.95vh,10px);font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:100px;background:rgba(240,184,96,.12);color:#F0B860;border:1px solid rgba(240,184,96,.3);margin-right:4px}
-  /* clientes: vendas em cima, compras embaixo (TV) */
+  /* clientes: vendas em cima, compras embaixo (TV) — ou só uma das duas, em tela cheia (botões ⛶, como o mapa do comercial) */
+  .cl-foco{display:inline-flex;align-items:center;gap:.45em;background:rgba(203,167,94,.1);border:1px solid rgba(203,167,94,.35);color:var(--gold-soft);font-family:'Figtree',sans-serif;font-size:clamp(10px,1.25vh,13px);font-weight:600;padding:.55em 1.05em;border-radius:100px;cursor:pointer;white-space:nowrap;transition:background .2s,border-color .2s}
+  .cl-foco:hover{background:rgba(203,167,94,.22);border-color:var(--gold)}
+  .cl-foco.voltar{display:none}
+  #viewClientes.foco-metas .cl-foco,#viewClientes.foco-compras .cl-foco{display:none}
+  #viewClientes.foco-metas .cl-foco.voltar,#viewClientes.foco-compras .cl-foco.voltar{display:inline-flex}
+  #viewClientes.foco-metas #clCompras{display:none}
+  #viewClientes.foco-compras #clQuadro{display:none}
   #viewClientes .cl-quadro{flex:1 1 0}
   .cl-col h2 .dsc{display:block;font-family:'Figtree',sans-serif;font-size:clamp(8px,.95vh,10px);font-weight:600;color:var(--text-3);letter-spacing:.02em;margin-top:2px}
   .cl-col h2 .tt{display:flex;flex-direction:column}
@@ -695,7 +702,7 @@
       <div class="overline">Carteira de Clientes</div>
       <div class="brand">Lidera <span>Soluções</span></div>
     </div>
-    <div class="title">Metas de faturamento · <b id="clTituloMes">—</b></div>
+    <div class="title"><span id="clTituloTxt">Metas de faturamento</span> · <b id="clTituloMes">—</b></div>
     <div class="header-controls">
       <div class="mes-filtro-wrap">
         <select class="mes-filtro view-select" aria-label="Escolher painel">
@@ -708,6 +715,9 @@
       <div class="mes-filtro-wrap">
         <select class="mes-filtro" id="clMes" aria-label="Mês"></select>
       </div>
+      <button class="cl-foco" type="button" data-foco="metas" title="Ver só as metas de vendas, em tela cheia">⛶ Só metas de vendas</button>
+      <button class="cl-foco" type="button" data-foco="compras" title="Ver só as compras da semana, em tela cheia">⛶ Só compras</button>
+      <button class="cl-foco voltar" type="button" data-foco="" title="Voltar a ver metas e compras juntas (Esc)">✕ Voltar ao painel</button>
     </div>
   </header>
 
@@ -2486,6 +2496,20 @@ document.getElementById('clCompras').addEventListener('change', (e) => {
   e.target.disabled = true;
   carregarClientes();
 });
+
+// foco: '' = metas e compras juntas · 'metas' = só metas de vendas · 'compras' = só compras (tela cheia, como o mapa do comercial)
+let clFoco = (() => { try { return localStorage.getItem('clFoco') || ''; } catch (e) { return ''; } })();
+function clAplicarFoco(f) {
+  clFoco = ['metas', 'compras'].includes(f) ? f : '';
+  const v = document.getElementById('viewClientes');
+  v.classList.toggle('foco-metas', clFoco === 'metas');
+  v.classList.toggle('foco-compras', clFoco === 'compras');
+  mS('clTituloTxt', clFoco === 'compras' ? 'Compras da semana' : 'Metas de faturamento');
+  try { localStorage.setItem('clFoco', clFoco); } catch (e) {}
+}
+document.querySelectorAll('#viewClientes .cl-foco').forEach((b) => b.addEventListener('click', () => clAplicarFoco(b.dataset.foco)));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && viewAtiva === 'clientes' && clFoco) clAplicarFoco(''); });
+clAplicarFoco(clFoco);
 
 let clSeq = 0;
 async function carregarClientes() {
